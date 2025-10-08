@@ -113,7 +113,7 @@ export default function Home() {
           {/* Contact Form */}
           <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-8 border border-slate-700/50">
             <h3 className="text-2xl font-bold text-slate-100 mb-6 text-center">Send a Message</h3>
-            <form className="space-y-6">
+            <form id="contact-form" className="space-y-6">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-2">
                   Name
@@ -121,7 +121,8 @@ export default function Home() {
                 <input
                   type="text"
                   id="name"
-                  name="name"
+                  name="from_name"
+                  required
                   className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   placeholder="Your name"
                 />
@@ -133,7 +134,8 @@ export default function Home() {
                 <input
                   type="email"
                   id="email"
-                  name="email"
+                  name="from_email"
+                  required
                   className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   placeholder="your.email@example.com"
                 />
@@ -146,6 +148,7 @@ export default function Home() {
                   type="text"
                   id="subject"
                   name="subject"
+                  required
                   className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   placeholder="What's this about?"
                 />
@@ -158,16 +161,25 @@ export default function Home() {
                   id="message"
                   name="message"
                   rows={4}
+                  required
                   className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
                   placeholder="Tell me about your project or collaboration idea..."
                 ></textarea>
               </div>
               <button
                 type="submit"
-                className="w-full px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-slate-900 font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50"
+                id="submit-btn"
+                className="w-full px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-slate-900 font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Send Message
+                <span id="btn-text">Send Message</span>
+                <span id="btn-loading" className="hidden">Sending...</span>
               </button>
+              <div id="success-message" className="hidden p-4 bg-green-900/50 border border-green-600 rounded-lg text-green-300">
+                Message sent successfully! I'll get back to you soon.
+              </div>
+              <div id="error-message" className="hidden p-4 bg-red-900/50 border border-red-600 rounded-lg text-red-300">
+                Sorry, there was an error sending your message. Please try again.
+              </div>
             </form>
           </div>
         </div>
@@ -179,6 +191,58 @@ export default function Home() {
           <p>&copy; {new Date().getFullYear()} VectorStrat AI. All rights reserved.</p>
         </div>
       </footer>
+
+      {/* EmailJS Script */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            document.addEventListener('DOMContentLoaded', function() {
+              const form = document.getElementById('contact-form');
+              const submitBtn = document.getElementById('submit-btn');
+              const btnText = document.getElementById('btn-text');
+              const btnLoading = document.getElementById('btn-loading');
+              const successMessage = document.getElementById('success-message');
+              const errorMessage = document.getElementById('error-message');
+
+              form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Show loading state
+                submitBtn.disabled = true;
+                btnText.classList.add('hidden');
+                btnLoading.classList.remove('hidden');
+                successMessage.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+
+                // Send email using EmailJS
+                emailjs.sendForm('service_kvd1v9r', 'template_d2f5vgo', form)
+                  .then(function(response) {
+                    console.log('SUCCESS!', response.status, response.text);
+                    
+                    // Show success message
+                    successMessage.classList.remove('hidden');
+                    form.reset();
+                    
+                    // Reset button state
+                    submitBtn.disabled = false;
+                    btnText.classList.remove('hidden');
+                    btnLoading.classList.add('hidden');
+                  }, function(error) {
+                    console.log('FAILED...', error);
+                    
+                    // Show error message
+                    errorMessage.classList.remove('hidden');
+                    
+                    // Reset button state
+                    submitBtn.disabled = false;
+                    btnText.classList.remove('hidden');
+                    btnLoading.classList.add('hidden');
+                  });
+              });
+            });
+          `,
+        }}
+      />
     </div>
   );
 }

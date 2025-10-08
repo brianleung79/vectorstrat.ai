@@ -20,6 +20,7 @@ export default function RootLayout({
         <script
           type="text/javascript"
           src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"
+          async
         ></script>
         <script
           type="text/javascript"
@@ -30,6 +31,7 @@ export default function RootLayout({
               })();
             `,
           }}
+          async
         />
       </head>
       <body className={inter.className}>{children}</body>

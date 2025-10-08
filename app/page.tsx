@@ -175,7 +175,7 @@ export default function Home() {
                 <span id="btn-loading" className="hidden">Sending...</span>
               </button>
               <div id="success-message" className="hidden p-4 bg-green-900/50 border border-green-600 rounded-lg text-green-300">
-                Message sent successfully! I'll get back to you soon.
+                Message sent successfully! I&apos;ll get back to you soon.
               </div>
               <div id="error-message" className="hidden p-4 bg-red-900/50 border border-red-600 rounded-lg text-red-300">
                 Sorry, there was an error sending your message. Please try again.

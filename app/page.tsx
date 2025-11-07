@@ -1,3 +1,5 @@
+import ContactForm from './components/ContactForm';
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-900">
@@ -109,79 +111,9 @@ export default function Home() {
               Interested in collaboration or want to learn more about these AI projects?
             </p>
           </div>
-          
+
           {/* Contact Form */}
-          <div className="bg-gray-800/40 backdrop-blur-sm rounded-xl p-8 border border-gray-700/40">
-            <h3 className="text-2xl font-bold text-gray-100 mb-6 text-center">Send a Message</h3>
-            <form id="contact-form" className="space-y-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="from_name"
-                  required
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  placeholder="Your name"
-                />
-              </div>
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="from_email"
-                  required
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  placeholder="your.email@example.com"
-                />
-              </div>
-              <div>
-                <label htmlFor="subject" className="block text-sm font-medium text-gray-300 mb-2">
-                  Subject
-                </label>
-                <input
-                  type="text"
-                  id="subject"
-                  name="subject"
-                  required
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  placeholder="What's this about?"
-                />
-              </div>
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-gray-300 mb-2">
-                  Message
-                </label>
-                <textarea
-                  id="message"
-                  name="message"
-                  rows={4}
-                  required
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
-                  placeholder="Tell me about your project or collaboration idea..."
-                ></textarea>
-              </div>
-              <button
-                type="submit"
-                id="submit-btn"
-                className="w-full px-6 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-semibold rounded-lg transition-all shadow-lg shadow-amber-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span id="btn-text">Send Message</span>
-                <span id="btn-loading" className="hidden">Sending...</span>
-              </button>
-              <div id="success-message" className="hidden p-4 bg-green-900/50 border border-green-600 rounded-lg text-green-300">
-                Message sent successfully! I&apos;ll get back to you soon.
-              </div>
-              <div id="error-message" className="hidden p-4 bg-red-900/50 border border-red-600 rounded-lg text-red-300">
-                Sorry, there was an error sending your message. Please try again.
-              </div>
-            </form>
-          </div>
+          <ContactForm />
         </div>
       </section>
 
@@ -191,58 +123,6 @@ export default function Home() {
           <p>&copy; {new Date().getFullYear()} VectorStrat AI. All rights reserved.</p>
         </div>
       </footer>
-
-      {/* EmailJS Script */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            document.addEventListener('DOMContentLoaded', function() {
-              const form = document.getElementById('contact-form');
-              const submitBtn = document.getElementById('submit-btn');
-              const btnText = document.getElementById('btn-text');
-              const btnLoading = document.getElementById('btn-loading');
-              const successMessage = document.getElementById('success-message');
-              const errorMessage = document.getElementById('error-message');
-
-              form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                // Show loading state
-                submitBtn.disabled = true;
-                btnText.classList.add('hidden');
-                btnLoading.classList.remove('hidden');
-                successMessage.classList.add('hidden');
-                errorMessage.classList.add('hidden');
-
-                // Send email using EmailJS
-                emailjs.sendForm('service_kvd1v9r', 'template_d2f5vgo', form)
-                  .then(function(response) {
-                    console.log('SUCCESS!', response.status, response.text);
-                    
-                    // Show success message
-                    successMessage.classList.remove('hidden');
-                    form.reset();
-                    
-                    // Reset button state
-                    submitBtn.disabled = false;
-                    btnText.classList.remove('hidden');
-                    btnLoading.classList.add('hidden');
-                  }, function(error) {
-                    console.log('FAILED...', error);
-                    
-                    // Show error message
-                    errorMessage.classList.remove('hidden');
-                    
-                    // Reset button state
-                    submitBtn.disabled = false;
-                    btnText.classList.remove('hidden');
-                    btnLoading.classList.add('hidden');
-                  });
-              });
-            });
-          `,
-        }}
-      />
     </div>
   );
 }

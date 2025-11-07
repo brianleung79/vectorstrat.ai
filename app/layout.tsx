@@ -16,24 +16,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <script
-          type="text/javascript"
-          src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"
-          async
-        ></script>
-        <script
-          type="text/javascript"
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                emailjs.init("H3EYgg8SuEgjbnXSB");
-              })();
-            `,
-          }}
-          async
-        />
-      </head>
       <body className={inter.className}>{children}</body>
     </html>
   );

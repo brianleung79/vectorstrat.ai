@@ -29,10 +29,11 @@ npm run lint
 
 ### Current State: Single-Page Application
 
-Currently a single-page application with all content in one file:
+Currently a single-page application with the following structure:
 - [app/page.tsx](app/page.tsx) - Main landing page containing Hero, Projects, About, and Contact sections
-- [app/layout.tsx](app/layout.tsx) - Root layout with metadata, Inter font, and EmailJS initialization
+- [app/layout.tsx](app/layout.tsx) - Root layout with metadata and Inter font
 - [app/globals.css](app/globals.css) - Global styles with dark theme CSS variables
+- [app/components/ContactForm.tsx](app/components/ContactForm.tsx) - Client component for EmailJS contact form
 
 ### Planned Architecture: Multi-Page AI Use Case Showcase
 
@@ -79,12 +80,13 @@ The application currently uses inline components within [app/page.tsx](app/page.
 
 ### External Integrations
 
-**EmailJS Contact Form** (configured in [layout.tsx](app/layout.tsx)):
+**EmailJS Contact Form** (implemented in [app/components/ContactForm.tsx](app/components/ContactForm.tsx)):
 - Service ID: `service_kvd1v9r`
 - Template ID: `template_d2f5vgo`
 - Public Key: `H3EYgg8SuEgjbnXSB`
-- EmailJS SDK is loaded asynchronously and initialized in the document head
-- Form submission logic is embedded as inline script in [page.tsx](app/page.tsx)
+- Uses `@emailjs/browser` npm package (not CDN)
+- Implements React client component with proper hooks and state management
+- Single state machine pattern ensures only success OR error message displays
 
 ### Path Aliases
 
@@ -104,7 +106,8 @@ The site is deployed on Vercel with automatic deployments from the main branch:
 - **ESLint**: Next.js ESLint configuration is active
 - **Component Props**: Use explicit interface definitions (see `ProjectCardProps` in [page.tsx](app/page.tsx))
 - **HTML Entities**: Use proper escaping (e.g., `&apos;` instead of apostrophes in JSX)
-- **Inline Scripts**: Client-side JavaScript is embedded using `dangerouslySetInnerHTML` for EmailJS integration
+- **Client Components**: Use `'use client'` directive for components with interactivity (see [ContactForm.tsx](app/components/ContactForm.tsx))
+- **State Management**: Prefer single state machine patterns over multiple boolean flags for mutually exclusive states
 
 ## Project Status & Vision
 

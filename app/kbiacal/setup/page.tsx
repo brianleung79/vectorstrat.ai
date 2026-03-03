@@ -92,7 +92,7 @@ export default function SetupPage() {
 
   async function handleLogout() {
     await createClient().auth.signOut()
-    router.push('/login')
+    router.push('/kbiacal/login')
     router.refresh()
   }
 

@@ -33,19 +33,19 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Redirect unauthenticated users trying to access /kbiacal to /login
+  // Redirect unauthenticated users trying to access /kbiacal to /kbiacal/login
   if (
     !user &&
     request.nextUrl.pathname.startsWith('/kbiacal')
   ) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/kbiacal/login'
     url.searchParams.set('redirectTo', request.nextUrl.pathname)
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from /login to /kbiacal
-  if (user && request.nextUrl.pathname === '/login') {
+  // Redirect authenticated users away from /kbiacal/login to /kbiacal
+  if (user && request.nextUrl.pathname === '/kbiacal/login') {
     const redirectTo = request.nextUrl.searchParams.get('redirectTo') || '/kbiacal'
     const url = request.nextUrl.clone()
     url.pathname = redirectTo

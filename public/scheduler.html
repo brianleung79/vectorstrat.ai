@@ -1,0 +1,2263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KBIA 2026 Summer Camp Scheduler</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f4f8; color: #1a2a3a; }
+
+  header { background: linear-gradient(135deg, #1a3a5c, #2a5a8c); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header .subtitle { font-size: 13px; opacity: 0.8; }
+
+  .cost-bar { background: #0d2137; color: #7ec8f0; padding: 8px 24px; display: flex; gap: 24px; font-size: 13px; font-weight: 500; }
+  .cost-bar .cost-item { display: flex; gap: 6px; }
+  .cost-bar .cost-item .amount { color: #4fd1c5; font-weight: 700; }
+  .cost-bar .cost-item.total .amount { color: #f6e05e; }
+
+  .controls { display: flex; gap: 12px; padding: 12px 24px; background: white; border-bottom: 1px solid #e2e8f0; align-items: center; flex-wrap: wrap; }
+  .week-tabs { display: flex; gap: 4px; }
+  .week-tab { padding: 6px 14px; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; font-size: 13px; background: white; transition: all 0.15s; }
+  .week-tab:hover { background: #edf2f7; }
+  .week-tab.active { background: #2a5a8c; color: white; border-color: #2a5a8c; }
+  .child-tabs { display: flex; gap: 4px; margin-left: 20px; }
+  .child-tab { padding: 6px 14px; border: 2px solid #cbd5e0; border-radius: 6px; cursor: pointer; font-size: 13px; background: white; transition: all 0.15s; font-weight: 500; }
+  .child-tab:hover { opacity: 0.8; }
+  .child-tab.active { color: white; }
+  /* Child-specific colors are injected dynamically in initApp() */
+
+  .view-toggle { margin-left: auto; display: flex; gap: 4px; }
+  .view-btn { padding: 6px 12px; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; font-size: 12px; background: white; }
+  .view-btn.active { background: #2a5a8c; color: white; border-color: #2a5a8c; }
+
+  .main { display: flex; height: calc(100vh - 140px); overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar { width: 320px; min-width: 320px; background: white; border-right: 1px solid #e2e8f0; overflow-y: auto; padding: 12px; }
+  .sidebar h3 { font-size: 14px; color: #4a5568; margin-bottom: 8px; padding: 4px 8px; }
+  .cat-group { margin-bottom: 12px; }
+  .cat-header { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 8px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .cat-header .arrow { transition: transform 0.2s; font-size: 10px; }
+  .cat-header.collapsed .arrow { transform: rotate(-90deg); }
+  .cat-items { padding-left: 4px; }
+  .cat-items.hidden { display: none; }
+  .class-item { padding: 6px 8px; margin: 2px 0; border-radius: 4px; cursor: pointer; font-size: 12px; border: 1px solid transparent; transition: all 0.15s; display: flex; justify-content: space-between; align-items: center; }
+  .class-item:hover { background: #f7fafc; border-color: #e2e8f0; }
+  .class-item .class-name { font-weight: 500; flex: 1; }
+  .class-item .class-meta { font-size: 11px; color: #718096; text-align: right; }
+  .class-item .class-days { font-size: 10px; color: #a0aec0; }
+  .class-item.added { opacity: 0.5; border-color: #c6f6d5; background: #f0fff4; }
+  .class-item.waitlisted { opacity: 0.7; border-color: #fefcbf; background: #fffff0; border-style: dashed; }
+  .class-item.ineligible { opacity: 0.35; cursor: not-allowed; }
+
+  /* Popups (add, sidebar, block) */
+  .class-popup { position: fixed; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 300; padding: 4px; display: flex; flex-direction: column; gap: 3px; min-width: 160px; }
+  .popup-btn { padding: 7px 14px; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; background: white; transition: all 0.15s; white-space: nowrap; text-align: left; }
+  .popup-btn.confirm-btn { color: #2f855a; border-color: #c6f6d5; }
+  .popup-btn.confirm-btn:hover { background: #f0fff4; }
+  .popup-btn.waitlist-btn { color: #d69e2e; border-color: #fefcbf; }
+  .popup-btn.waitlist-btn:hover { background: #fffff0; }
+  .popup-btn.remove-btn { color: #c53030; border-color: #fed7d7; }
+  .popup-btn.remove-btn:hover { background: #fff5f5; }
+  .popup-info { font-size: 11px; color: #4a5568; padding: 6px 8px 3px; border-top: 1px solid #edf2f7; margin-top: 1px; line-height: 1.5; }
+
+  /* Sidebar + badge */
+  .plus-badge { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; flex-shrink: 0; line-height: 1; }
+  .plus-badge.available { background: #bee3f8; color: #2b6cb0; }
+  .plus-badge.added { background: #c6f6d5; color: #276749; }
+  .plus-badge.waitlisted { background: #fefcbf; color: #b7791f; }
+
+  /* Waitlisted class blocks on calendar */
+  .class-block.waitlisted { opacity: 0.6; border: 2px dashed rgba(255,255,255,0.8); background-image: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.15) 4px, rgba(255,255,255,0.15) 8px); }
+  .class-block.waitlisted .block-name::before { content: '⏳ '; font-size: 9px; }
+
+  .search-box { width: 100%; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; margin-bottom: 8px; }
+
+  /* Grid - using CSS Grid with explicit row placement */
+  .grid-area { flex: 1; overflow: auto; padding: 0; }
+
+  .schedule-grid {
+    display: grid;
+    /* time-label + 5 day columns */
+    grid-template-columns: 56px repeat(5, 1fr);
+    /* 1 header row + 24 half-hour rows (8AM-8PM) */
+    grid-template-rows: 32px repeat(24, 28px);
+    gap: 0;
+    min-width: 600px;
+  }
+  .grid-header {
+    background: #edf2f7; font-weight: 600; font-size: 12px;
+    text-align: center; padding: 6px 2px;
+    border-bottom: 2px solid #cbd5e0;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .grid-time-label {
+    font-size: 10px; color: #718096; text-align: right; padding-right: 6px;
+    border-right: 1px solid #e2e8f0;
+    display: flex; align-items: flex-start; justify-content: flex-end;
+    padding-top: 1px;
+  }
+  .grid-cell {
+    border-right: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f0f0f0;
+    min-height: 28px;
+  }
+  .grid-cell.hour-start { border-top: 1px solid #d0d8e0; }
+
+  .class-block {
+    border-radius: 4px; padding: 2px 6px 2px 6px; font-size: 10px; font-weight: 500;
+    color: white; cursor: pointer; overflow: hidden; z-index: 1; position: relative;
+    display: flex; flex-direction: column; justify-content: center;
+    line-height: 1.3; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    margin: 0 2px; min-height: 0;
+  }
+  .class-block:hover { opacity: 0.85; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+  .class-block .block-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .class-block .block-time { font-size: 9px; opacity: 0.85; }
+  .class-block.conflict { outline: 3px solid #e53e3e; outline-offset: -1px; animation: pulse-red 1s infinite; }
+  @keyframes pulse-red { 0%,100% { outline-color: #e53e3e; } 50% { outline-color: #fc8181; } }
+
+  /* Category colors */
+  .cat-bundle { background: #2f855a; } .cat-bundle-h { background: #c6f6d5; color: #22543d; }
+  .cat-pool { background: #3182ce; } .cat-pool-h { background: #ebf4ff; color: #2a4a7f; }
+  .cat-tennis { background: #d69e2e; } .cat-tennis-h { background: #fefcbf; color: #744210; }
+  .cat-art { background: #dd6b20; } .cat-art-h { background: #feebc8; color: #7b341e; }
+  .cat-sailing { background: #319795; } .cat-sailing-h { background: #e6fffa; color: #234e52; }
+  .cat-drama { background: #d53f8c; } .cat-drama-h { background: #fff5f7; color: #702459; }
+  .cat-reading { background: #805ad5; } .cat-reading-h { background: #faf5ff; color: #44337a; }
+  .cat-nature { background: #38a169; } .cat-nature-h { background: #f0fff4; color: #22543d; }
+  .cat-music { background: #e53e3e; } .cat-music-h { background: #fff5f5; color: #742a2a; }
+  .cat-sports { background: #2d3748; } .cat-sports-h { background: #edf2f7; color: #1a202c; }
+  .cat-beach { background: #ed8936; } .cat-beach-h { background: #fffaf0; color: #7b341e; }
+  .cat-boating { background: #2b6cb0; } .cat-boating-h { background: #ebf8ff; color: #2a4365; }
+  .cat-cit { background: #718096; } .cat-cit-h { background: #edf2f7; color: #2d3748; }
+  .cat-evening { background: #553c9a; } .cat-evening-h { background: #faf5ff; color: #322659; }
+  .cat-woodwork { background: #975a16; } .cat-woodwork-h { background: #fefcbf; color: #744210; }
+
+  /* All-kids view */
+  .all-kids-view { display: grid; gap: 12px; padding: 12px; overflow: auto; height: calc(100vh - 140px); }
+  /* grid-template-columns set dynamically in initApp() based on number of children */
+  .kid-column { background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-y: auto; }
+  .kid-column h3 { font-size: 14px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid; }
+  /* Kid-column colors are injected dynamically in initApp() */
+  .kid-schedule-item { display: flex; justify-content: space-between; padding: 4px 6px; margin: 2px 0; border-radius: 4px; font-size: 11px; }
+  .kid-schedule-item .ks-name { font-weight: 500; }
+  .kid-schedule-item .ks-time { color: #718096; font-size: 10px; }
+
+  .empty-state { color: #a0aec0; font-size: 13px; text-align: center; padding: 40px; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .sidebar { width: 260px; min-width: 260px; }
+    .all-kids-view { grid-template-columns: 1fr; }
+  }
+
+  .conflict-warning { background: #fed7d7; color: #9b2c2c; padding: 6px 12px; font-size: 12px; font-weight: 500; display: none; }
+  .conflict-warning.show { display: block; }
+
+  .remove-x { position: absolute; top: 2px; right: 3px; font-size: 9px; font-weight: 700; opacity: 0.7; background: rgba(0,0,0,0.2); border-radius: 3px; padding: 0 3px; line-height: 13px; cursor: pointer; z-index: 2; }
+  .remove-x:hover { opacity: 1; background: rgba(0,0,0,0.4); }
+  .info-btn { position: absolute; top: 2px; right: 17px; font-size: 9px; font-style: italic; font-weight: 600; opacity: 0.7; background: rgba(0,0,0,0.2); border-radius: 50%; width: 13px; height: 13px; display: flex; align-items: center; justify-content: center; cursor: default; z-index: 2; }
+  .info-btn:hover { opacity: 1; background: rgba(0,0,0,0.4); }
+  .class-tooltip { position: fixed; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); z-index: 500; padding: 10px 12px; font-size: 12px; color: #2d3748; max-width: 300px; line-height: 1.55; pointer-events: none; }
+  .class-tooltip strong { font-size: 13px; display: block; margin-bottom: 3px; }
+  .class-tooltip .tt-meta { color: #718096; font-size: 11px; margin-bottom: 4px; }
+  .class-tooltip .tt-desc { color: #4a5568; font-style: italic; border-top: 1px solid #edf2f7; padding-top: 5px; margin-top: 4px; }
+
+  /* Assistant Panel */
+  .ai-toggle-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+  .ai-toggle-btn:hover { background: rgba(255,255,255,0.25); }
+  .ai-toggle-btn.active { background: #4fd1c5; border-color: #4fd1c5; color: #0d2137; }
+
+  .ai-panel {
+    position: fixed; right: 0; top: 0; bottom: 0; width: 400px;
+    background: white; border-left: 2px solid #e2e8f0;
+    display: flex; flex-direction: column; z-index: 200;
+    box-shadow: -4px 0 16px rgba(0,0,0,0.12);
+    transform: translateX(0); transition: transform 0.25s ease;
+  }
+  .ai-panel.hidden { transform: translateX(100%); pointer-events: none; }
+
+  .ai-panel-header {
+    background: linear-gradient(135deg, #1a3a5c, #2a5a8c); color: white;
+    padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+    font-weight: 600; font-size: 14px;
+  }
+  .ai-panel-header .ai-close { background: none; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 18px; padding: 0 4px; }
+  .ai-panel-header .ai-close:hover { color: white; }
+
+  .ai-quick-actions { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; background: #f7fafc; }
+  .ai-quick-btn { flex: 1; padding: 7px 10px; border: 1px solid #cbd5e0; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; background: white; transition: all 0.15s; text-align: center; }
+  .ai-quick-btn:hover { background: #edf2f7; border-color: #a0aec0; }
+
+  .ai-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .ai-msg { padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.6; max-width: 95%; word-wrap: break-word; }
+  .ai-msg p { margin: 0 0 8px 0; }
+  .ai-msg p:last-child { margin-bottom: 0; }
+  .ai-msg ul, .ai-msg ol { margin: 4px 0 8px 0; padding-left: 18px; }
+  .ai-msg li { margin-bottom: 3px; }
+  .ai-msg strong { font-weight: 600; color: #1a2a3a; }
+  .ai-msg.user { background: #ebf8ff; align-self: flex-end; border-bottom-right-radius: 2px; }
+  .ai-msg.assistant { background: #f0f4f8; align-self: flex-start; border-bottom-left-radius: 2px; }
+  .ai-msg.thinking { color: #a0aec0; font-style: italic; align-self: flex-start; background: none; padding: 4px 12px; }
+  .ai-msg.error { background: #fed7d7; color: #9b2c2c; }
+  .ai-cost { font-size: 9px; color: #a0aec0; text-align: right; padding: 1px 8px 3px; }
+
+  .ai-suggestions { padding: 0 12px; max-height: 50%; overflow-y: auto; }
+  .suggestion-card {
+    border: 1px solid #c6f6d5; border-radius: 8px; padding: 10px 12px;
+    margin: 6px 0; cursor: pointer; transition: all 0.15s; background: #f0fff4;
+  }
+  .suggestion-card:hover { border-color: #38a169; background: #c6f6d5; }
+  .suggestion-card.remove-card { border-color: #fed7d7; background: #fff5f5; }
+  .suggestion-card.remove-card:hover { border-color: #e53e3e; background: #fed7d7; }
+  .suggestion-card.applied { opacity: 0.4; pointer-events: none; }
+  .sg-name { font-weight: 600; font-size: 13px; }
+  .sg-detail { font-size: 11px; color: #718096; margin-top: 2px; }
+  .sg-action { font-size: 11px; font-weight: 600; color: #2f855a; margin-top: 4px; }
+  .suggestion-card.remove-card .sg-action { color: #c53030; }
+
+  .apply-all-btn { width: 100%; padding: 8px; margin: 6px 0; border: 1px solid #4299e1; border-radius: 6px; background: #ebf8ff; color: #2b6cb0; font-weight: 600; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .apply-all-btn:hover { background: #bee3f8; }
+
+  .ai-input-area { padding: 12px; border-top: 1px solid #e2e8f0; display: flex; gap: 8px; background: #f7fafc; }
+  .ai-input-area textarea { flex: 1; resize: none; height: 52px; border: 1px solid #cbd5e0; border-radius: 6px; padding: 8px 10px; font-size: 13px; font-family: inherit; }
+  .ai-input-area textarea:focus { outline: none; border-color: #4299e1; box-shadow: 0 0 0 2px rgba(66,153,225,0.2); }
+  .ai-send-btn { padding: 8px 16px; background: #2a5a8c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; align-self: flex-end; }
+  .ai-send-btn:hover { background: #1a3a5c; }
+  .ai-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Import review */
+  .import-section { font-size: 12px; padding: 0 12px 8px; }
+  .import-section h4 { font-size: 13px; font-weight: 700; margin: 8px 0 4px; color: #2a5a8c; }
+  .import-child-group { margin: 6px 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
+  .import-child-header { background: #edf2f7; padding: 6px 10px; font-weight: 600; font-size: 12px; cursor: pointer; display: flex; justify-content: space-between; }
+  .import-child-header:hover { background: #e2e8f0; }
+  .import-week-group { padding: 4px 10px; border-top: 1px solid #f0f0f0; }
+  .import-week-label { font-weight: 600; font-size: 11px; color: #718096; margin: 4px 0 2px; }
+  .import-row { display: flex; align-items: flex-start; gap: 6px; padding: 5px 0; font-size: 11px; border-bottom: 1px solid #f0f0f0; }
+  .import-row:last-child { border-bottom: none; }
+  .import-row input[type=checkbox] { margin: 2px 0 0 0; flex-shrink: 0; }
+  .ir-details { flex: 1; min-width: 0; }
+  .ir-line1 { display: flex; align-items: center; gap: 6px; }
+  .ir-name { font-weight: 500; }
+  .ir-status { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
+  .ir-status.confirmed { background: #c6f6d5; color: #22543d; }
+  .ir-status.waitlisted { background: #fefcbf; color: #744210; }
+  .ir-schedule { font-size: 10px; color: #4a5568; margin-top: 1px; }
+  .ir-note { font-size: 10px; color: #a0aec0; font-style: italic; }
+  .import-row.no-match { opacity: 0.5; }
+  .import-ambiguous { margin: 4px 0; border-left: 3px solid #ed8936; padding-left: 8px; }
+  .import-ambiguous-header { font-size: 11px; font-weight: 500; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+  .import-ambiguous-reason { font-size: 10px; color: #ed8936; font-style: italic; margin-bottom: 3px; }
+  .import-actions { display: flex; gap: 6px; padding: 8px 12px; }
+  .import-actions button { flex: 1; padding: 8px; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer; border: 1px solid; }
+  .import-apply-btn { background: #2f855a; color: white; border-color: #276749; }
+  .import-apply-btn:hover { background: #276749; }
+  .import-cancel-btn { background: white; color: #718096; border-color: #cbd5e0; }
+  .import-cancel-btn:hover { background: #f7fafc; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>KBIA 2026 Summer Scheduler</h1>
+    <div class="subtitle">Weeks 5-8 &middot; July 20 &ndash; August 14</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="ai-toggle-btn" id="aiToggleBtn" onclick="toggleAiPanel()">Assistant</button>
+    <a href="/kbiacal/setup" class="ai-toggle-btn" style="text-decoration:none;display:inline-block;">Family</a>
+    <button class="ai-toggle-btn" onclick="handleLogout()">Sign Out</button>
+  </div>
+</header>
+
+<div class="cost-bar" id="costBar">
+  <!-- Cost items are generated dynamically in initApp() -->
+  <div class="cost-item total"><span>Total:</span> <span class="amount" id="costTotal">$0</span></div>
+</div>
+
+<div class="conflict-warning" id="conflictWarning">Time conflict detected! Overlapping classes are outlined in red.</div>
+
+<div class="controls">
+  <div class="week-tabs">
+    <div class="week-tab active" data-week="5">Wk 5<br><small>Jul 20-24</small></div>
+    <div class="week-tab" data-week="6">Wk 6<br><small>Jul 27-31</small></div>
+    <div class="week-tab" data-week="7">Wk 7<br><small>Aug 3-7</small></div>
+    <div class="week-tab" data-week="8">Wk 8<br><small>Aug 10-14</small></div>
+  </div>
+  <div class="child-tabs" id="childTabs">
+    <!-- Child tabs are generated dynamically in initApp() -->
+  </div>
+  <div class="view-toggle">
+    <div class="view-btn active" data-view="single">Single View</div>
+    <div class="view-btn" data-view="all">All Kids</div>
+    <div class="view-btn" onclick="clearWeek()" style="margin-left:8px;color:#e53e3e;border-color:#feb2b2;">Clear Week</div>
+    <div class="view-btn" onclick="clearAll()" style="color:#e53e3e;border-color:#feb2b2;">Reset All</div>
+  </div>
+</div>
+
+<div class="main" id="mainArea">
+  <div class="sidebar" id="sidebar">
+    <input type="text" class="search-box" id="searchBox" placeholder="Search classes...">
+    <div id="classListContainer"></div>
+  </div>
+  <div class="grid-area" id="gridArea"></div>
+</div>
+
+<div class="all-kids-view" id="allKidsView" style="display:none;"></div>
+
+<div class="ai-panel hidden" id="aiPanel">
+  <div class="ai-panel-header">
+    <span>Assistant</span>
+    <button class="ai-close" onclick="toggleAiPanel()">&times;</button>
+  </div>
+  <div class="ai-quick-actions">
+    <button class="ai-quick-btn" onclick="askConflictHelp()">Fix Conflicts</button>
+    <button class="ai-quick-btn" onclick="askFillSchedule()">Suggest Classes</button>
+    <button class="ai-quick-btn" onclick="document.getElementById('importFile').click()" style="background:#f0fff4;border-color:#c6f6d5;">Import</button>
+    <input type="file" id="importFile" accept=".csv,.tsv,.txt" style="display:none;" onchange="handleImportFile(event)">
+  </div>
+  <div class="ai-messages" id="aiMessages">
+    <div class="ai-msg assistant">Hi! I can help you build schedules. Try "Fix Conflicts" or "Suggest Classes", or ask me anything about scheduling.</div>
+  </div>
+  <div class="ai-suggestions" id="aiSuggestions"></div>
+  <div class="ai-input-area">
+    <textarea id="aiInput" placeholder="e.g., Fill afternoons with outdoor activities..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAiRequest();}"></textarea>
+    <button class="ai-send-btn" id="aiSendBtn" onclick="sendAiRequest()">Send</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CHILDREN
+// ============================================================
+// CHILDREN is populated dynamically from /api/family on init
+let CHILDREN = {};
+
+// ============================================================
+// SCHEDULE DATA - All classes for weeks 5-8
+// ============================================================
+// Each class: { id, name, category, ageMin, ageMax, weeks[], days[], startTime (decimal hours), endTime, fee, notes? }
+// Days: 0=M, 1=Tu, 2=W, 3=Th, 4=F
+const CLASSES = [
+  // === STARFISH & BUNDLES ===
+  { id: 'starfish', name: 'Starfish (4-5)', category: 'bundle', ageMin: 4, ageMax: 5, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 8.5, endTime: 11.5, fee: 427, notes: 'Drop-off program: swim, story, nature, craft' },
+
+  // AM Bundles: 9 AM - 12 PM
+  // Ages 5-6: 9-10 Creative Arts(MWF)/Sculpture(TuTh), 10-11 Nature, 11-11:30 Swimming, 11:30-12 change
+  { id: 'am-swim-56', name: 'AM Swimming Bundle (5-6)', category: 'bundle', ageMin: 5, ageMax: 6, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 9, endTime: 12, fee: 422, notes: 'Creative Arts/Sculpture + Nature + Swimming' },
+  { id: 'am-read-56', name: 'AM Reading Bundle (5-6)', category: 'bundle', ageMin: 5, ageMax: 6, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 9, endTime: 12, fee: 427, notes: 'Creative Arts/Sculpture + Nature + Reading' },
+
+  // Ages 7-8: 9-10 Nature, 10-10:30 Swimming, 10:30-11 change, 11-12 Creative Arts(MWF)/Sculpture(TuTh)
+  { id: 'am-swim-78', name: 'AM Swimming Bundle (7-8)', category: 'bundle', ageMin: 7, ageMax: 8, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 9, endTime: 12, fee: 422, notes: 'Nature + Swimming + Creative Arts/Sculpture' },
+  { id: 'am-read-78', name: 'AM Reading Bundle (7-8)', category: 'bundle', ageMin: 7, ageMax: 8, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 9, endTime: 12, fee: 427, notes: 'Nature + Reading + Creative Arts/Sculpture' },
+
+  // Ages 9-10: 9-10 Swimming/Reading, 10-11 Creative Arts(MWF)/Sculpture(TuTh), 11-12 Nature
+  { id: 'am-swim-910', name: 'AM Swimming Bundle (9-10)', category: 'bundle', ageMin: 9, ageMax: 10, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 9, endTime: 12, fee: 422, notes: 'Swimming + Creative Arts/Sculpture + Nature' },
+  { id: 'am-read-910', name: 'AM Reading Bundle (9-10)', category: 'bundle', ageMin: 9, ageMax: 10, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 9, endTime: 12, fee: 427, notes: 'Reading + Creative Arts/Sculpture + Nature' },
+
+  // PM Bundles: 1 PM - 4 PM
+  // Ages 4-5: 1-2 Nature, 2-3 Creative Arts(MWF)/Sculpture(TuTh), 3-4 Swimming
+  { id: 'pm-swim-45', name: 'PM Swimming Bundle (4-5)', category: 'bundle', ageMin: 4, ageMax: 5, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 13, endTime: 16, fee: 422, notes: 'Nature + Creative Arts/Sculpture + Swimming' },
+  // Ages 6-8: 1-2 Creative Arts(MWF)/Sculpture(TuTh), 2-3 Nature, 3-4 Swimming
+  { id: 'pm-swim-68', name: 'PM Swimming Bundle (6-8)', category: 'bundle', ageMin: 6, ageMax: 8, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 13, endTime: 16, fee: 422, notes: 'Creative Arts/Sculpture + Nature + Swimming' },
+
+  // Sports Bundle (9-12): M-F 9 AM-12 PM
+  // M: Basketball 9-10, Golf 10-11:30, Diving 11:30-12
+  // Tu: Beach Games 9-10, Golf 10-11:30, Diving 11:30-12
+  // W: Basketball 9-10, Golf 10-11:30, Diving 11:30-12
+  // Th: Beach Games 9-10, time w/ counselor 10-11:30, Diving 11:30-12
+  // F: Basketball 9-10, Surfing 10-11:30, walk+Diving 11:30-12
+  { id: 'sports-bundle-567', name: 'Sports Bundle (9+)', category: 'bundle', ageMin: 9, ageMax: 99, weeks: [5,6,7], days: [0,1,2,3,4], startTime: 9, endTime: 12, fee: 452, notes: 'Basketball, Beach Games, Golf, Surfing, Diving' },
+  { id: 'sports-bundle-8', name: 'Sports Bundle (9+) Wk8', category: 'bundle', ageMin: 9, ageMax: 99, weeks: [8], days: [0,1,2,3,4], startTime: 9, endTime: 12, fee: 407, notes: 'Basketball, Beach Games, Golf, Surfing, Diving (no M golf)' },
+
+  // Creative Minds Bundle (7-12): M-F 10 AM-1 PM
+  // MWF: Ukulele 10-11, Songwriting 11-12, Drama/Dance 12-1
+  // TuTh: Beach Games 10-11, Time w/ counselor 11-12, Drama/Dance 12-1
+  { id: 'creative-minds', name: 'Creative Minds Bundle (7+)', category: 'bundle', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 10, endTime: 13, fee: 303, notes: 'Ukulele, Songwriting, Beach Games, Drama/Dance' },
+
+  // === POOL ===
+  { id: 'swim-830-a', name: 'Swimming', category: 'pool', ageMin: 6, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 8.5, endTime: 9, fee: 85, notes: 'Ages 6+' },
+  { id: 'swim-900-a', name: 'Swimming (9 AM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 9, endTime: 9.5, fee: 85 },
+  { id: 'swim-930', name: 'Swimming (9:30 AM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 9.5, endTime: 10, fee: 85 },
+  { id: 'swim-1000', name: 'Swimming (10 AM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 10, endTime: 10.5, fee: 85 },
+  { id: 'swim-1030', name: 'Swimming (10:30 AM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 10.5, endTime: 11, fee: 85 },
+  { id: 'swim-1100', name: 'Swimming (11 AM)', category: 'pool', ageMin: 4, ageMax: 6, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 11, endTime: 11.5, fee: 85, notes: 'Ages 4-6' },
+  { id: 'swim-1130', name: 'Swimming (11:30 AM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 11.5, endTime: 12, fee: 85 },
+  { id: 'swim-1230', name: 'Swimming (12:30 PM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 12.5, endTime: 13, fee: 85 },
+  { id: 'swim-1300', name: 'Swimming (1 PM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 13, endTime: 13.5, fee: 85 },
+  { id: 'swim-1330', name: 'Swimming (1:30 PM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 13.5, endTime: 14, fee: 85 },
+  { id: 'swim-1400', name: 'Swimming (2 PM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 14, endTime: 14.5, fee: 85 },
+  { id: 'swim-1530', name: 'Swimming (3:30 PM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 15.5, endTime: 16, fee: 85 },
+  { id: 'swim-1630', name: 'Swimming (4:30 PM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 16.5, endTime: 17, fee: 85 },
+  { id: 'dive-1000', name: 'Diving (10 AM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 10, endTime: 10.5, fee: 85 },
+  { id: 'dive-1030', name: 'Diving (10:30 AM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 10.5, endTime: 11, fee: 85 },
+  { id: 'dive-1100', name: 'Diving (11 AM)', category: 'pool', ageMin: 10, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 11, endTime: 11.5, fee: 85, notes: 'Ages 10+' },
+  { id: 'dive-1130', name: 'Diving (11:30 AM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 11.5, endTime: 12, fee: 85 },
+  { id: 'dive-1230', name: 'Diving (12:30 PM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 12.5, endTime: 13, fee: 85 },
+  { id: 'dive-1300', name: 'Diving (1 PM)', category: 'pool', ageMin: 5, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 13, endTime: 13.5, fee: 85 },
+  { id: 'swim-team', name: 'Swim Team', category: 'pool', ageMin: 9, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 14.5, endTime: 15.5, fee: 119 },
+  { id: 'jr-lifeguard', name: 'Jr. Lifeguarding', category: 'pool', ageMin: 13, ageMax: 14, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 14, endTime: 14.5, fee: 85 },
+  { id: 'water-polo-5', name: 'Water Polo (5 PM)', category: 'pool', ageMin: 9, ageMax: 99, weeks: [5], days: [0,2,4], startTime: 17, endTime: 17.5, fee: 54, notes: 'Wk 5 only' },
+  { id: 'water-polo-530', name: 'Water Polo (5:30 PM)', category: 'pool', ageMin: 9, ageMax: 99, weeks: [5], days: [0,2,4], startTime: 17.5, endTime: 18, fee: 54, notes: 'Wks 4-5 only' },
+
+  // === TENNIS ===
+  { id: 'tennis-sd-46-12', name: 'Tennis Stroke Dev 4-6 (12 PM)', category: 'tennis', ageMin: 4, ageMax: 6, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 12, endTime: 12.5, fee: 68, notes: 'At Edgcomb' },
+  { id: 'tennis-sd-710-12', name: 'Tennis Stroke Dev 7-10 (12 PM)', category: 'tennis', ageMin: 7, ageMax: 10, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 12, endTime: 12.5, fee: 68, notes: 'At Edgcomb' },
+  { id: 'tennis-asd', name: 'Tennis Adv Stroke Dev 9+', category: 'tennis', ageMin: 9, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 12, endTime: 13, fee: 110, notes: 'At Edgcomb' },
+  { id: 'tennis-sd-46-1230', name: 'Tennis Stroke Dev 4-6 (12:30)', category: 'tennis', ageMin: 4, ageMax: 6, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 12.5, endTime: 13, fee: 68, notes: 'At Edgcomb' },
+  { id: 'tennis-sd-710-1230', name: 'Tennis Stroke Dev 7-10 (12:30)', category: 'tennis', ageMin: 7, ageMax: 10, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 12.5, endTime: 13, fee: 68, notes: 'At Edgcomb' },
+  { id: 'tennis-sd-7p-1', name: 'Tennis Stroke Dev 7+ (1 PM)', category: 'tennis', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 13, endTime: 14, fee: 110, notes: 'At Edgcomb, 1hr' },
+  { id: 'tennis-match', name: 'Tennis Match Play 9+', category: 'tennis', ageMin: 9, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 13, endTime: 14, fee: 110, notes: 'At Edgcomb' },
+  { id: 'tennis-sd-46-2', name: 'Tennis Stroke Dev 4-6 (2 PM)', category: 'tennis', ageMin: 4, ageMax: 6, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 14, endTime: 14.5, fee: 68, notes: 'At Edgcomb' },
+  { id: 'tennis-sd-710-2', name: 'Tennis Stroke Dev 7-10 (2 PM)', category: 'tennis', ageMin: 7, ageMax: 10, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 14, endTime: 14.5, fee: 68, notes: 'At Edgcomb' },
+  { id: 'tennis-gp', name: 'Tennis Game Play 9+', category: 'tennis', ageMin: 9, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 14, endTime: 14.5, fee: 68, notes: 'At Edgcomb' },
+
+  // === ART ===
+  { id: 'creart-56', name: 'Creative Arts (5-6)', category: 'art', ageMin: 5, ageMax: 6, weeks: [5,6,7,8], days: [0,2,4], startTime: 9, endTime: 10, fee: 93 },
+  { id: 'creart-910', name: 'Creative Arts (9-10)', category: 'art', ageMin: 9, ageMax: 10, weeks: [5,6,7,8], days: [0,2,4], startTime: 10, endTime: 11, fee: 93 },
+  { id: 'creart-78', name: 'Creative Arts (7-8)', category: 'art', ageMin: 7, ageMax: 8, weeks: [5,6,7,8], days: [0,2,4], startTime: 11, endTime: 12, fee: 93 },
+  { id: 'creart-68', name: 'Creative Arts (6-8)', category: 'art', ageMin: 6, ageMax: 8, weeks: [5,6,7,8], days: [0,2,4], startTime: 13, endTime: 14, fee: 93 },
+  { id: 'artexplore-45', name: 'Art Exploration (4-5)', category: 'art', ageMin: 4, ageMax: 5, weeks: [5,6,7,8], days: [0,2,4], startTime: 14, endTime: 15, fee: 93 },
+  { id: 'sculpt-56', name: 'Sculpture (5-6)', category: 'art', ageMin: 5, ageMax: 6, weeks: [5,6,7,8], days: [1,3], startTime: 9, endTime: 10, fee: 72 },
+  { id: 'sculpt-910', name: 'Sculpture (9-10)', category: 'art', ageMin: 9, ageMax: 10, weeks: [5,6,7,8], days: [1,3], startTime: 10, endTime: 11, fee: 72 },
+  { id: 'sculpt-78', name: 'Sculpture (7-8)', category: 'art', ageMin: 7, ageMax: 8, weeks: [5,6,7,8], days: [1,3], startTime: 11, endTime: 12, fee: 72 },
+  { id: 'sculpt-68', name: 'Sculpture (6-8)', category: 'art', ageMin: 6, ageMax: 8, weeks: [5,6,7,8], days: [1,3], startTime: 13, endTime: 14, fee: 72 },
+  { id: 'sculpt-45', name: 'Sculpture (4-5)', category: 'art', ageMin: 4, ageMax: 5, weeks: [5,6,7,8], days: [1,3], startTime: 14, endTime: 15, fee: 72 },
+  { id: 'sculpt-11p', name: 'Sculpture (11+)', category: 'art', ageMin: 11, ageMax: 99, weeks: [5,6,7,8], days: [1,3], startTime: 15, endTime: 16, fee: 72 },
+  { id: 'bead-jewel', name: 'Beading Jewelry (7+)', category: 'art', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [2,4], startTime: 13, endTime: 14, fee: 71 },
+  { id: 'textile-jewel', name: 'Textile Jewelry (8+)', category: 'art', ageMin: 8, ageMax: 99, weeks: [5,6,7,8], days: [2,4], startTime: 14, endTime: 15, fee: 71 },
+  { id: 'leather-m', name: 'Leathercrafts (M)', category: 'art', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [0], startTime: 8, endTime: 9.5, fee: 57 },
+  { id: 'leather-w', name: 'Leathercrafts (W)', category: 'art', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [2], startTime: 8, endTime: 9.5, fee: 57 },
+  { id: 'leather-f', name: 'Leathercrafts (F)', category: 'art', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [4], startTime: 8, endTime: 9.5, fee: 57 },
+
+  // === ART ELECTIVES (9+, TuTh, rotating) ===
+  { id: 'comic-5', name: 'Comic Book Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [5], days: [1,3], startTime: 9, endTime: 11, fee: 110 },
+  { id: 'print-5', name: 'Printmaking', category: 'art', ageMin: 9, ageMax: 99, weeks: [5], days: [1,3], startTime: 11, endTime: 12, fee: 55 },
+  { id: 'recycle-5', name: 'Recycle Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [5], days: [1,3], startTime: 12, endTime: 13, fee: 55 },
+  { id: 'mural-5', name: 'Mural/Community Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [5], days: [1,3], startTime: 13, endTime: 14, fee: 55 },
+  { id: 'fashion-5', name: 'Fashion Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [5], days: [1,3], startTime: 14, endTime: 15, fee: 55 },
+  { id: 'comic-6', name: 'Comic Book Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [6], days: [1,3], startTime: 9, endTime: 11, fee: 110 },
+  { id: 'mixed-6', name: 'Mixed Media', category: 'art', ageMin: 9, ageMax: 99, weeks: [6], days: [1,3], startTime: 11, endTime: 12, fee: 55 },
+  { id: 'mural-6', name: 'Mural/Community Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [6], days: [1,3], startTime: 12, endTime: 13, fee: 55 },
+  { id: 'print-6', name: 'Printmaking', category: 'art', ageMin: 9, ageMax: 99, weeks: [6], days: [1,3], startTime: 13, endTime: 14, fee: 55 },
+  { id: 'fashion-6', name: 'Fashion Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [6], days: [1,3], startTime: 14, endTime: 15, fee: 55 },
+  { id: 'comic-7', name: 'Comic Book Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [7], days: [1,3], startTime: 9, endTime: 11, fee: 110 },
+  { id: 'recycle-7', name: 'Recycle Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [7], days: [1,3], startTime: 11, endTime: 12, fee: 55 },
+  { id: 'mixed-7', name: 'Mixed Media', category: 'art', ageMin: 9, ageMax: 99, weeks: [7], days: [1,3], startTime: 12, endTime: 13, fee: 55 },
+  { id: 'print-7', name: 'Printmaking', category: 'art', ageMin: 9, ageMax: 99, weeks: [7], days: [1,3], startTime: 13, endTime: 14, fee: 55 },
+  { id: 'fashion-7', name: 'Fashion Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [7], days: [1,3], startTime: 14, endTime: 15, fee: 55 },
+  { id: 'comic-8', name: 'Comic Book Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 9, endTime: 11, fee: 110 },
+  { id: 'mural-8', name: 'Mural/Community Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 11, endTime: 12, fee: 55 },
+  { id: 'recycle-8', name: 'Recycle Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 12, endTime: 13, fee: 55 },
+  { id: 'mixed-8', name: 'Mixed Media', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 13, endTime: 14, fee: 55 },
+  { id: 'fashion-8', name: 'Fashion Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 14, endTime: 15, fee: 55 },
+
+  // === WOODWORKING ===
+  { id: 'wood-intro-tu', name: 'Intro Woodworking (Tu)', category: 'woodwork', ageMin: 7, ageMax: 10, weeks: [5,6,7,8], days: [1], startTime: 8, endTime: 9.5, fee: 61 },
+  { id: 'wood-intro-th', name: 'Intro Woodworking (Th)', category: 'woodwork', ageMin: 7, ageMax: 10, weeks: [5,6,7,8], days: [3], startTime: 8, endTime: 9.5, fee: 61 },
+  { id: 'wood-explore-m', name: 'Exploring Woodworking (M)', category: 'woodwork', ageMin: 7, ageMax: 11, weeks: [5,6,7,8], days: [0], startTime: 9.5, endTime: 11, fee: 61 },
+  { id: 'wood-explore-w', name: 'Exploring Woodworking (W)', category: 'woodwork', ageMin: 7, ageMax: 11, weeks: [5,6,7,8], days: [2], startTime: 9.5, endTime: 11, fee: 61 },
+  { id: 'wood-explore-f', name: 'Exploring Woodworking (F)', category: 'woodwork', ageMin: 7, ageMax: 11, weeks: [5,6,7,8], days: [4], startTime: 9.5, endTime: 11, fee: 61 },
+  { id: 'wood-models', name: 'Models & Sculptures', category: 'woodwork', ageMin: 9, ageMax: 99, weeks: [5,6,7,8], days: [1,3], startTime: 9.5, endTime: 11, fee: 122 },
+
+  // === READING ===
+  { id: 'read-910', name: 'Reading (9-10)', category: 'reading', ageMin: 9, ageMax: 10, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 9, endTime: 10, fee: 105 },
+  { id: 'read-78', name: 'Reading (7-8)', category: 'reading', ageMin: 7, ageMax: 8, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 10, endTime: 11, fee: 105 },
+  { id: 'read-56', name: 'Reading (5-6)', category: 'reading', ageMin: 5, ageMax: 6, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 11, endTime: 12, fee: 105 },
+  { id: 'bookclub', name: 'Beachcomber Book Club', category: 'reading', ageMin: 7, ageMax: 8, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 13, endTime: 14, fee: 105 },
+  { id: 'tidepools', name: 'Titles & Tidepools', category: 'reading', ageMin: 5, ageMax: 6, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 14, endTime: 15, fee: 105 },
+  { id: 'word-wiz', name: 'Word Wizards', category: 'reading', ageMin: 9, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 15, endTime: 16, fee: 105 },
+
+  // === NATURE ===
+  { id: 'nature-910', name: 'Nature (9-10)', category: 'nature', ageMin: 9, ageMax: 10, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 11, endTime: 12, fee: 140 },
+  { id: 'nature-46', name: 'Nature (4-6)', category: 'nature', ageMin: 4, ageMax: 6, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 13, endTime: 14, fee: 140 },
+  { id: 'nature-78', name: 'Nature (7-8)', category: 'nature', ageMin: 7, ageMax: 8, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 14, endTime: 15, fee: 140 },
+
+  // === MUSIC ===
+  { id: 'uke-58', name: 'Ukulele (5-8)', category: 'music', ageMin: 5, ageMax: 8, weeks: [5,6,7,8], days: [0,2,4], startTime: 9, endTime: 10, fee: 66 },
+  { id: 'uke-710', name: 'Ukulele (7-10)', category: 'music', ageMin: 7, ageMax: 10, weeks: [5,6,7,8], days: [0,2,4], startTime: 10, endTime: 11, fee: 66 },
+  { id: 'songwrite', name: 'Songwriting (7-12)', category: 'music', ageMin: 7, ageMax: 12, weeks: [5,6,7,8], days: [0,2,4], startTime: 11, endTime: 12, fee: 66 },
+
+  // === DRAMA ===
+  { id: 'drama-elect-5', name: 'Play in a Week (7+)', category: 'drama', ageMin: 7, ageMax: 99, weeks: [5], days: [0,1,2,3,4], startTime: 12, endTime: 13, fee: 105 },
+  { id: 'drama-elect-6', name: 'Musical Theater Dance (7+)', category: 'drama', ageMin: 7, ageMax: 99, weeks: [6], days: [0,1,2,3,4], startTime: 12, endTime: 13, fee: 105 },
+  { id: 'drama-elect-7', name: 'Play in a Week (7+)', category: 'drama', ageMin: 7, ageMax: 99, weeks: [7], days: [0,1,2,3,4], startTime: 12, endTime: 13, fee: 105 },
+  { id: 'drama-elect-8', name: 'Musical Theater Dance (7+)', category: 'drama', ageMin: 7, ageMax: 99, weeks: [8], days: [0,1,2,3,4], startTime: 12, endTime: 13, fee: 105 },
+  { id: 'drama-beg', name: 'Beginner Drama (5-8)', category: 'drama', ageMin: 5, ageMax: 8, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 13, endTime: 14, fee: 105 },
+  { id: 'drama-adv', name: 'Drama (7+)', category: 'drama', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [0,1,2,3,4], startTime: 14, endTime: 15, fee: 105 },
+
+  // === GOLF ===
+  { id: 'golf-710-567', name: 'Golf (7-10)', category: 'sports', ageMin: 7, ageMax: 10, weeks: [5,6,7], days: [0,1,2], startTime: 8, endTime: 9, fee: 128, notes: 'At Webhannet' },
+  { id: 'golf-9p-567', name: 'Golf (9+)', category: 'sports', ageMin: 9, ageMax: 99, weeks: [5,6,7], days: [0,1,2], startTime: 10, endTime: 11, fee: 128, notes: 'At Webhannet' },
+  { id: 'golf-58-567', name: 'Golf (5-8)', category: 'sports', ageMin: 5, ageMax: 8, weeks: [5,6,7], days: [0,1,2], startTime: 11, endTime: 12, fee: 128, notes: 'At Webhannet' },
+  { id: 'golf-710-8', name: 'Golf (7-10) Wk8', category: 'sports', ageMin: 7, ageMax: 10, weeks: [8], days: [1,2], startTime: 8, endTime: 9, fee: 84, notes: 'At Webhannet, TuW only' },
+  { id: 'golf-9p-8', name: 'Golf (9+) Wk8', category: 'sports', ageMin: 9, ageMax: 99, weeks: [8], days: [1,2], startTime: 10, endTime: 11, fee: 84, notes: 'At Webhannet, TuW only' },
+  { id: 'golf-58-8', name: 'Golf (5-8) Wk8', category: 'sports', ageMin: 5, ageMax: 8, weeks: [8], days: [1,2], startTime: 11, endTime: 12, fee: 84, notes: 'At Webhannet, TuW only' },
+
+  // === BASKETBALL ===
+  { id: 'bball-m9', name: 'Basketball (M 9AM)', category: 'sports', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [0], startTime: 9, endTime: 10, fee: 24 },
+  { id: 'bball-m1', name: 'Basketball (M 1PM)', category: 'sports', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [0], startTime: 13, endTime: 14, fee: 24 },
+  { id: 'bball-m2', name: 'Basketball (M 2PM)', category: 'sports', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [0], startTime: 14, endTime: 15, fee: 24 },
+  { id: 'bball-w9', name: 'Basketball (W 9AM)', category: 'sports', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [2], startTime: 9, endTime: 10, fee: 24 },
+  { id: 'bball-w1', name: 'Basketball (W 1PM)', category: 'sports', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [2], startTime: 13, endTime: 14, fee: 24 },
+  { id: 'bball-w2', name: 'Basketball (W 2PM)', category: 'sports', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [2], startTime: 14, endTime: 15, fee: 24 },
+  { id: 'bball-f9', name: 'Basketball (F 9AM)', category: 'sports', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [4], startTime: 9, endTime: 10, fee: 24 },
+  { id: 'bball-f1', name: 'Basketball (F 1PM)', category: 'sports', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [4], startTime: 13, endTime: 14, fee: 24 },
+  { id: 'bball-f2', name: 'Basketball (F 2PM)', category: 'sports', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [4], startTime: 14, endTime: 15, fee: 24 },
+
+  // === BEACH ===
+  { id: 'blg-710', name: 'Beach & Lawn Games (7-10)', category: 'beach', ageMin: 7, ageMax: 10, weeks: [5,6,7,8], days: [1,3], startTime: 9, endTime: 10, fee: 49 },
+  { id: 'blg-58', name: 'Beach & Lawn Games (5-8)', category: 'beach', ageMin: 5, ageMax: 8, weeks: [5,6,7,8], days: [1,3], startTime: 10, endTime: 11, fee: 49 },
+
+  // === SURFING ===
+  { id: 'surf-tu', name: 'Surfing (Tu)', category: 'beach', ageMin: 9, ageMax: 99, weeks: [5,6,7,8], days: [1], startTime: 10, endTime: 11.5, fee: 100, notes: "At Gooch's Beach" },
+  { id: 'surf-w', name: 'Surfing (W)', category: 'beach', ageMin: 9, ageMax: 99, weeks: [5,6,7,8], days: [2], startTime: 10, endTime: 11.5, fee: 100, notes: "At Gooch's Beach" },
+  { id: 'surf-th', name: 'Surfing (Th)', category: 'beach', ageMin: 9, ageMax: 99, weeks: [5,6,7,8], days: [3], startTime: 10, endTime: 11.5, fee: 100, notes: "At Gooch's Beach" },
+  { id: 'surf-f', name: 'Surfing (F)', category: 'beach', ageMin: 9, ageMax: 99, weeks: [5,6,7,8], days: [4], startTime: 10, endTime: 11.5, fee: 100, notes: "At Gooch's Beach" },
+
+  // === ISLAND & SEASIDE ===
+  { id: 'island-5', name: 'Island & Seaside Exploration', category: 'beach', ageMin: 7, ageMax: 99, weeks: [5], days: [1], startTime: 9, endTime: 14, fee: 138, notes: 'July 21, Tu, full day trip' },
+  { id: 'island-7', name: 'Island & Seaside Exploration', category: 'beach', ageMin: 7, ageMax: 99, weeks: [7], days: [3], startTime: 10, endTime: 15, fee: 138, notes: 'Aug 6, Th, full day trip' },
+
+  // === SAND ===
+  { id: 'sandcastle-5', name: 'Sand Castle Building', category: 'beach', ageMin: 7, ageMax: 99, weeks: [5], days: [2], startTime: 10, endTime: 11.5, fee: 41, notes: 'July 22, W' },
+  { id: 'sandcastle-7', name: 'Sand Castle Building', category: 'beach', ageMin: 7, ageMax: 99, weeks: [7], days: [2], startTime: 10, endTime: 11.5, fee: 41, notes: 'Aug 5, W' },
+  { id: 'sandcreate-6', name: 'Sand Creations', category: 'beach', ageMin: 4, ageMax: 10, weeks: [6], days: [1], startTime: 15, endTime: 16.5, fee: 41, notes: 'July 28, Tu' },
+  { id: 'sandcreate-8', name: 'Sand Creations', category: 'beach', ageMin: 4, ageMax: 10, weeks: [8], days: [1], startTime: 15, endTime: 16.5, fee: 41, notes: 'Aug 11, Tu' },
+
+  // === MARINE BIOLOGY 5-8 ===
+  { id: 'mbio58-5a', name: 'Marine Bio 5-8 (W)', category: 'nature', ageMin: 5, ageMax: 8, weeks: [5], days: [2], startTime: 12, endTime: 14, fee: 62, notes: 'July 22' },
+  { id: 'mbio58-5b', name: 'Marine Bio 5-8 (F)', category: 'nature', ageMin: 5, ageMax: 8, weeks: [5], days: [4], startTime: 12, endTime: 14, fee: 62, notes: 'July 24' },
+  { id: 'mbio58-6', name: 'Marine Bio 5-8 (M)', category: 'nature', ageMin: 5, ageMax: 8, weeks: [6], days: [0], startTime: 15.5, endTime: 17.5, fee: 62, notes: 'July 27' },
+  { id: 'mbio58-7a', name: 'Marine Bio 5-8 (Tu)', category: 'nature', ageMin: 5, ageMax: 8, weeks: [7], days: [1], startTime: 9, endTime: 11, fee: 62, notes: 'Aug 4' },
+  { id: 'mbio58-7b', name: 'Marine Bio 5-8 (F)', category: 'nature', ageMin: 5, ageMax: 8, weeks: [7], days: [4], startTime: 12, endTime: 14, fee: 62, notes: 'Aug 7' },
+  { id: 'mbio58-8', name: 'Marine Bio 5-8 (M)', category: 'nature', ageMin: 5, ageMax: 8, weeks: [8], days: [0], startTime: 15, endTime: 17, fee: 62, notes: 'Aug 10' },
+
+  // === MARINE BIOLOGY 7-11 ===
+  { id: 'mbio711-5a', name: 'Marine Bio 7-11 (Th)', category: 'nature', ageMin: 7, ageMax: 11, weeks: [5], days: [3], startTime: 12, endTime: 14, fee: 62, notes: 'July 23' },
+  { id: 'mbio711-5b', name: 'Marine Bio 7-11 (F)', category: 'nature', ageMin: 7, ageMax: 11, weeks: [5], days: [4], startTime: 14, endTime: 16, fee: 62, notes: 'July 24' },
+  { id: 'mbio711-6', name: 'Marine Bio 7-11 (Tu)', category: 'nature', ageMin: 7, ageMax: 11, weeks: [6], days: [1], startTime: 16, endTime: 18, fee: 62, notes: 'July 28' },
+  { id: 'mbio711-7a', name: 'Marine Bio 7-11 (M)', category: 'nature', ageMin: 7, ageMax: 11, weeks: [7], days: [0], startTime: 8, endTime: 10, fee: 62, notes: 'Aug 3' },
+  { id: 'mbio711-7b', name: 'Marine Bio 7-11 (W)', category: 'nature', ageMin: 7, ageMax: 11, weeks: [7], days: [2], startTime: 10, endTime: 12, fee: 62, notes: 'Aug 5' },
+  { id: 'mbio711-8', name: 'Marine Bio 7-11 (Tu)', category: 'nature', ageMin: 7, ageMax: 11, weeks: [8], days: [1], startTime: 16, endTime: 18, fee: 62, notes: 'Aug 11' },
+
+  // === SAILING ===
+  // Topsails (9-10) / Laser (11+)
+  { id: 'topsail-5-mt', name: 'Topsails/Laser (MTu)', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [5], days: [0,1], startTime: 15, endTime: 17.5, fee: 284, notes: 'Topsails 9-10 / Laser 11+' },
+  { id: 'topsail-5-w', name: 'Topsails/Laser (W)', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [5], days: [2], startTime: 16, endTime: 18.5, fee: 0, notes: 'Part of weekly fee' },
+  { id: 'topsail-6', name: 'Topsails/Laser (WThF)', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [6], days: [2,3,4], startTime: 12, endTime: 14.5, fee: 284 },
+  { id: 'topsail-7', name: 'Topsails/Laser (TuWTh)', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [7], days: [1,2,3], startTime: 16, endTime: 18.5, fee: 284 },
+  { id: 'topsail-8', name: 'Topsails/Laser (MTuW)', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [8], days: [0,1,2], startTime: 8, endTime: 10.5, fee: 284 },
+
+  // Gollywobblers (7-8) - NOT eligible for any of your kids
+  // Tween Sailing (11+)
+  { id: 'tween-sail-5', name: 'Tween Sailing', category: 'sailing', ageMin: 11, ageMax: 99, weeks: [5], days: [2,3], startTime: -1, endTime: -1, fee: 160, notes: 'W 4-6 PM, Th 8-10 AM' },
+  { id: 'tween-sail-6', name: 'Tween Sailing', category: 'sailing', ageMin: 11, ageMax: 99, weeks: [6], days: [0,1], startTime: 10, endTime: 12, fee: 160, notes: 'MTu 10 AM-12 PM' },
+  { id: 'tween-sail-7', name: 'Tween Sailing', category: 'sailing', ageMin: 11, ageMax: 99, weeks: [7], days: [0,1], startTime: 13, endTime: 15, fee: 160, notes: 'MTu 1-3 PM' },
+  { id: 'tween-sail-8', name: 'Tween Sailing', category: 'sailing', ageMin: 11, ageMax: 99, weeks: [8], days: [3,4], startTime: 13, endTime: 15, fee: 160, notes: 'ThF 1-3 PM' },
+
+  // Race Team (9+)
+  { id: 'race-5', name: 'Race Team', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [5], days: [0,1,4], startTime: -1, endTime: -1, fee: 327, notes: 'MTu 3-6 PM, F 8-11 AM' },
+  { id: 'race-6', name: 'Race Team', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [6], days: [0,1,4], startTime: -1, endTime: -1, fee: 327, notes: 'MTu 9 AM-12 PM, F 11 AM-2 PM' },
+  { id: 'race-7', name: 'Race Team', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [7], days: [0,3,4], startTime: -1, endTime: -1, fee: 327, notes: 'M 1-4 PM, ThF 3-6 PM' },
+  { id: 'race-8', name: 'Race Team', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [8], days: [0,1,3], startTime: -1, endTime: -1, fee: 327, notes: 'MTu 8-11 AM, Th 10 AM-1 PM' },
+
+  // Cruisin with a Crew (11+)
+  { id: 'cruise-5', name: "Cruisin' with a Crew", category: 'sailing', ageMin: 11, ageMax: 99, weeks: [5], days: [2,3], startTime: 17, endTime: 19, fee: 160, notes: 'WTh 5-7 PM' },
+  { id: 'cruise-7', name: "Cruisin' with a Crew", category: 'sailing', ageMin: 11, ageMax: 99, weeks: [7], days: [2,3], startTime: 17, endTime: 19, fee: 160, notes: 'WTh 5-7 PM' },
+
+  // === POWERBOATING ===
+  { id: 'pwrsq-5', name: 'Power Squadron', category: 'boating', ageMin: 11, ageMax: 99, weeks: [5], days: [0,1,2], startTime: 16, endTime: 18, fee: 237, notes: 'MTuW 4-6 PM' },
+  { id: 'pwrsq-6', name: 'Power Squadron', category: 'boating', ageMin: 11, ageMax: 99, weeks: [6], days: [2,3,4], startTime: 11, endTime: 13, fee: 237, notes: 'WThF 11 AM-1 PM' },
+  { id: 'pwrsq-7', name: 'Power Squadron', category: 'boating', ageMin: 11, ageMax: 99, weeks: [7], days: [0,1,2], startTime: -1, endTime: -1, fee: 237, notes: 'M 3-5, TuW 4-6 PM' },
+  { id: 'pwrsq-8', name: 'Power Squadron', category: 'boating', ageMin: 11, ageMax: 99, weeks: [8], days: [0,1,2], startTime: -1, endTime: -1, fee: 237, notes: 'MTu 8-10 AM, W 9-11 AM' },
+
+  // Fishing (9+)
+  { id: 'fish-5', name: 'Fishing', category: 'boating', ageMin: 9, ageMax: 99, weeks: [5], days: [2,4], startTime: -1, endTime: -1, fee: 125, notes: 'W 4-6 PM, F 8-10 AM' },
+  { id: 'fish-6', name: 'Fishing', category: 'boating', ageMin: 9, ageMax: 99, weeks: [6], days: [3,4], startTime: -1, endTime: -1, fee: 125, notes: 'Th/F 11AM-1PM or 1-3PM' },
+  { id: 'fish-7', name: 'Fishing', category: 'boating', ageMin: 9, ageMax: 99, weeks: [7], days: [2,3,4], startTime: -1, endTime: -1, fee: 125, notes: 'W 2-6, Th 3-5, F 4-6 PM' },
+  { id: 'fish-8', name: 'Fishing', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [2,3,4], startTime: -1, endTime: -1, fee: 125, notes: 'W-F, various times' },
+
+  // Island Picnic (9+)
+  { id: 'picnic-5', name: 'Island Picnic at Sea', category: 'boating', ageMin: 9, ageMax: 99, weeks: [5], days: [0,1], startTime: 15, endTime: 17, fee: 125, notes: 'M/Tu 3-5 PM' },
+  { id: 'picnic-6', name: 'Island Picnic at Sea', category: 'boating', ageMin: 9, ageMax: 99, weeks: [6], days: [0,1], startTime: 9, endTime: 13, fee: 125, notes: 'M/Tu 9-1 PM (varies)' },
+  { id: 'picnic-7', name: 'Island Picnic at Sea', category: 'boating', ageMin: 9, ageMax: 99, weeks: [7], days: [0,1], startTime: 13, endTime: 17, fee: 125, notes: 'M 1-5, Tu 2-6 PM (varies)' },
+  { id: 'picnic-8', name: 'Island Picnic at Sea', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [0,1], startTime: 8, endTime: 12, fee: 125, notes: 'M/Tu 8-12 PM (varies)' },
+
+  // Ocean Explorers (9+)
+  { id: 'ocean-6', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [6], days: [2], startTime: 10, endTime: 13, fee: 156, notes: 'July 29, W 10 AM-1 PM' },
+  { id: 'ocean-8', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [2], startTime: 11, endTime: 14, fee: 156, notes: 'Aug 12, W 11 AM-2 PM' },
+
+  // === SEA FLEAS (4-6) ===
+  { id: 'seaflea-5a', name: 'Sea Fleas Session A', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [5], days: [0,1,2,3], startTime: -1, endTime: -1, fee: 106, notes: 'MTuW 3-3:45, Th 4:30-6' },
+  { id: 'seaflea-5b', name: 'Sea Fleas Session B', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [5], days: [0,1,2,3], startTime: -1, endTime: -1, fee: 106, notes: 'MTuW 4-4:45, Th 8-9:30 AM' },
+  { id: 'seaflea-6a', name: 'Sea Fleas Session A', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [6], days: [0,1,2,3], startTime: 10, endTime: 11.5, fee: 106, notes: 'MTuW 10-10:45, Th 10-11:30' },
+  { id: 'seaflea-6b', name: 'Sea Fleas Session B', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [6], days: [0,1,2,3], startTime: 11, endTime: 13.25, fee: 106, notes: 'MTuW 11-11:45, Th 11:45-1:15' },
+  { id: 'seaflea-7a', name: 'Sea Fleas Session A', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [7], days: [0,1,2,3], startTime: 14, endTime: 15.5, fee: 106, notes: 'MTuW 2-2:45, Th 2-3:30' },
+  { id: 'seaflea-7b', name: 'Sea Fleas Session B', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [7], days: [0,1,2,3], startTime: 15, endTime: 17.25, fee: 106, notes: 'MTuW 3-3:45, Th 3:45-5:15' },
+  { id: 'seaflea-8a', name: 'Sea Fleas Session A', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [8], days: [0,1,2,3], startTime: 9, endTime: 11.5, fee: 106, notes: 'MTuW 9-9:45, Th 10-11:30' },
+  { id: 'seaflea-8b', name: 'Sea Fleas Session B', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [8], days: [0,1,2,3], startTime: 10, endTime: 13.25, fee: 106, notes: 'MTuW 10-10:45, Th 11:45-1:15' },
+
+  // === KAYAKING / SUP ===
+  { id: 'kayak-5', name: 'Kayaking', category: 'boating', ageMin: 7, ageMax: 99, weeks: [5], days: [0,1], startTime: 15, endTime: 17, fee: 70, notes: 'MTu 3-4 or 4-5 PM' },
+  { id: 'sup-5', name: 'SUP', category: 'boating', ageMin: 9, ageMax: 99, weeks: [5], days: [0,1], startTime: 15, endTime: 17, fee: 79, notes: 'MTu 3-4 or 4-5 PM' },
+  { id: 'kayak-6a', name: 'Kayaking (MTu)', category: 'boating', ageMin: 7, ageMax: 99, weeks: [6], days: [0,1], startTime: 9, endTime: 14, fee: 70, notes: 'Multiple 1hr slots 9AM-2PM' },
+  { id: 'kayak-6b', name: 'Kayaking (ThF)', category: 'boating', ageMin: 7, ageMax: 99, weeks: [6], days: [3,4], startTime: 11, endTime: 16, fee: 70, notes: 'Multiple 1hr slots 11AM-4PM' },
+  { id: 'sup-6', name: 'SUP', category: 'boating', ageMin: 9, ageMax: 99, weeks: [6], days: [0,1,3,4], startTime: 10, endTime: 15, fee: 79, notes: 'Multiple 1hr slots' },
+  { id: 'kayak-7a', name: 'Kayaking (MTu)', category: 'boating', ageMin: 7, ageMax: 99, weeks: [7], days: [0,1], startTime: 13, endTime: 17, fee: 70, notes: 'Multiple 1hr slots 1-5 PM' },
+  { id: 'kayak-7b', name: 'Kayaking (ThF)', category: 'boating', ageMin: 7, ageMax: 99, weeks: [7], days: [3,4], startTime: 15, endTime: 17, fee: 70, notes: '3-4 or 4-5 PM' },
+  { id: 'sup-7', name: 'SUP', category: 'boating', ageMin: 9, ageMax: 99, weeks: [7], days: [0,1,3,4], startTime: 14, endTime: 17, fee: 79, notes: 'Multiple 1hr slots' },
+  { id: 'kayak-8a', name: 'Kayaking (MTu)', category: 'boating', ageMin: 7, ageMax: 99, weeks: [8], days: [0,1], startTime: 8, endTime: 12, fee: 70, notes: 'Multiple 1hr slots 8 AM-12 PM' },
+  { id: 'kayak-8b', name: 'Kayaking (ThF)', category: 'boating', ageMin: 7, ageMax: 99, weeks: [8], days: [3,4], startTime: 10, endTime: 15, fee: 70, notes: 'Multiple 1hr slots 10 AM-3 PM' },
+  { id: 'sup-8', name: 'SUP', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [0,1,3,4], startTime: 9, endTime: 15, fee: 79, notes: 'Multiple 1hr slots' },
+
+  // === CIT ===
+  { id: 'cit-13', name: 'General CIT (13)', category: 'cit', ageMin: 13, ageMax: 13, weeks: [5,6,7,8], days: [0,3], startTime: 9, endTime: 10, fee: 145 },
+  { id: 'cit-tennis', name: 'CIT Tennis', category: 'cit', ageMin: 13, ageMax: 14, weeks: [5,6,7,8], days: [2], startTime: 14, endTime: 14.5, fee: 22 },
+  { id: 'cit-pwrboat-5', name: 'CIT Powerboat', category: 'cit', ageMin: 13, ageMax: 14, weeks: [5], days: [3,4], startTime: 8, endTime: 10, fee: 125, notes: 'July 23-24' },
+  { id: 'cit-pwrboat-7', name: 'CIT Powerboat', category: 'cit', ageMin: 13, ageMax: 14, weeks: [7], days: [0,1], startTime: -1, endTime: -1, fee: 125, notes: 'M 1-3, Tu 2-4 PM' },
+  { id: 'cit-paddle-6', name: 'CIT Paddle', category: 'cit', ageMin: 13, ageMax: 14, weeks: [6], days: [2], startTime: 13, endTime: 15, fee: 75, notes: 'July 29, W 1-3 PM' },
+  { id: 'cit-paddle-7', name: 'CIT Paddle', category: 'cit', ageMin: 13, ageMax: 14, weeks: [7], days: [2], startTime: 14, endTime: 16, fee: 75, notes: 'Aug 5, W 2-4 PM' },
+  { id: 'cit-paddle-8', name: 'CIT Paddle', category: 'cit', ageMin: 13, ageMax: 14, weeks: [8], days: [2], startTime: 12, endTime: 14, fee: 75, notes: 'Aug 12, W 12-2 PM' },
+
+  // === EVENING ===
+  { id: 'movie-g', name: 'Movie Night (G)', category: 'evening', ageMin: 5, ageMax: 10, weeks: [5,6,7,8], days: [0], startTime: 18, endTime: 20, fee: 14 },
+  { id: 'movie-pg', name: 'Movie Night (PG)', category: 'evening', ageMin: 7, ageMax: 12, weeks: [5,6,7,8], days: [2], startTime: 18, endTime: 20, fee: 14 },
+  { id: 'teen-night', name: 'Teen Night', category: 'evening', ageMin: 13, ageMax: 14, weeks: [5,7,8], days: [3], startTime: 18, endTime: 20, fee: 39 },
+  { id: 'seadogs', name: 'Sea Dogs Game', category: 'evening', ageMin: 11, ageMax: 14, weeks: [6], days: [1], startTime: 16.5, endTime: 21.5, fee: 68, notes: 'Wk 6 only, Tu 4:30-9:30 PM' },
+];
+
+// Class descriptions from KBIA 2026 Activity Guide
+// Keys are full IDs or prefixes; getClassDesc() uses longest-prefix match
+const CLASS_DESCS = {
+  // Bundles
+  'starfish': 'Morning drop-off program for ages 4–5. Each day includes a 30-min swim lesson, story time, nature time, and a craft project. Staffed at a 4:1 ratio.',
+  'am-swim': '3-hour morning bundle (9 AM–12 PM). Combines age-appropriate Creative Arts or Sculpture, Nature, and a 30-min swimming lesson with supervision between classes.',
+  'am-read': '3-hour morning bundle (9 AM–12 PM). Combines age-appropriate Creative Arts or Sculpture, Nature, and a Reading class with supervision between classes.',
+  'pm-swim': '3-hour afternoon bundle (1–4 PM). Combines age-appropriate Creative Arts or Sculpture, Nature, and a 30-min swimming lesson.',
+  'sports-bundle': 'Full morning bundle (9 AM–12 PM). Basketball, Beach & Lawn Games, Golf, Surfing, and Diving spread across the week. For ages 9+.',
+  'creative-minds': 'Mid-morning bundle (10 AM–1 PM). Combines Ukulele, Songwriting, Beach & Lawn Games, and Drama/Dance across the week. For ages 7+.',
+  // Pool
+  'swim-team': 'Competitive swim training for experienced swimmers ages 9+. Focuses on stroke technique, starts, turns, and race strategy.',
+  'jr-lifeguard': 'Introduction to lifeguarding skills, water rescue techniques, and CPR basics for ages 13–14.',
+  'water-polo': 'Team sport combining swimming, throwing, and strategy. Games played in the KBIA pool. Ages 9+.',
+  'swim': '30-minute swimming lesson at the KBIA pool. Covers stroke development, water safety, and swimming skills calibrated to each session\'s level.',
+  'dive': '30-minute diving lesson at the KBIA pool. Covers forward dive, basic springboard technique, and safe water entry.',
+  // Tennis (all at Edgcomb Tennis Courts)
+  'tennis-sd-46': '30-minute lesson at Edgcomb Tennis Courts. Foundational stroke mechanics, coordination, and a fun introduction to tennis for ages 4–6.',
+  'tennis-sd-710': '30-minute lesson at Edgcomb Tennis Courts. Covers forehand, backhand, and basic court movement for players ages 7–10.',
+  'tennis-sd-7p': '1-hour lesson at Edgcomb Tennis Courts. Stroke development and court movement for players ages 7 and up.',
+  'tennis-asd': '1-hour advanced session at Edgcomb Tennis Courts. Intensive stroke refinement, footwork, and competitive strategy for experienced players ages 9+.',
+  'tennis-match': '1-hour match play session at Edgcomb. Focus on match situations, strategy, and competitive tennis for ages 9+.',
+  'tennis-gp': '30-minute supervised game play at Edgcomb Tennis Courts. Reinforces skills through live match situations for players ages 9+.',
+  // Art
+  'creart': '1-hour class exploring painting, drawing, and mixed media. Age-grouped so projects match developmental level. Meets Mon/Wed/Fri.',
+  'artexplore': 'Hands-on art introduction for ages 4–5 using simple materials to explore color, texture, and creative expression.',
+  'sculpt': '1-hour clay sculpture class. Children explore 3D form through hand-building and creative expression. Meets Tue/Thu.',
+  'bead-jewel': 'Create necklaces, bracelets, and wearable art using beads, wire, and basic jewelry-making techniques. Ages 7+.',
+  'textile-jewel': 'Create wearable art using fabric, fiber, and mixed-media techniques. A step up from beading for ages 8+.',
+  'leather': 'Cut, stamp, and stitch leather to create belts, keychains, and wristbands. All materials included. Ages 7+.',
+  // Art electives
+  'comic': 'Design and illustrate original comic strips and stories. Covers character design, panel composition, speech bubbles, and sequential storytelling. Ages 9+.',
+  'print': 'Explore relief printing, monoprinting, and screen-printing to create original prints. Ages 9+.',
+  'recycle': 'Transform recycled and found materials into creative sculptures and art pieces. Emphasis on sustainability and resourcefulness. Ages 9+.',
+  'mural': 'Collaborative large-scale painting project. Campers work together to design and execute a mural. Ages 9+.',
+  'fashion': 'Design, sketch, and construct wearable fashion pieces using fabric and mixed materials. Ages 9+.',
+  'mixed': 'Explore collage, assemblage, and mixed-media techniques using a wide variety of art materials. Ages 9+.',
+  // Woodworking
+  'wood-intro': 'Introduction to hand tools, safety, and basic woodworking. Create simple projects and learn foundational carpentry skills. Ages 7–10.',
+  'wood-explore': 'Build on basic woodworking skills with more complex projects using hand and power tools under close supervision. Ages 7–11.',
+  'wood-models': 'Advanced woodworking focused on building detailed models, 3D sculptures, and finished craft projects. Ages 9+.',
+  // Reading
+  'read-910': 'Daily reading sessions with age-appropriate texts. Combines read-alouds, discussion, and comprehension activities for ages 9–10.',
+  'read-78': 'Daily reading sessions featuring chapter books and literature discussions. Encourages critical thinking and reading fluency for ages 7–8.',
+  'read-56': 'Daily reading sessions with age-appropriate books. Combines read-alouds, phonics, and comprehension activities for ages 5–6.',
+  'bookclub': 'Literature-inspired club for ages 7–8 that blends books with beach exploration and nature activities related to the stories.',
+  'tidepools': 'Books and beach come together for ages 5–6. Read stories about ocean life and explore local tidepools and coastal habitats.',
+  'word-wiz': 'Advanced reading and language arts for experienced readers ages 9+. Includes literary analysis, vocabulary challenges, and creative writing.',
+  // Nature
+  'nature': 'Daily nature class exploring local ecosystems, plants, animals, and environmental science through hands-on activities and outdoor exploration at KBIA.',
+  'mbio58': 'Hands-on marine science session exploring local sea life, tidepool creatures, and ocean ecosystems for ages 5–8. Includes specimen observation and guided discussion.',
+  'mbio711': 'Deeper exploration of marine ecosystems, ocean science, and local sea life for ages 7–11. May include tidepool or dock exploration.',
+  // Music
+  'uke': 'Learn to play ukulele! Covers basic chords, strumming patterns, and simple songs. No experience required. Meets Mon/Wed/Fri.',
+  'songwrite': 'Write original songs from scratch. Covers melody, lyrics, structure, and performance. Students share their creations at week\'s end. Ages 7–12.',
+  // Drama
+  'drama-elect-5': 'Perform a full play in just one week! Campers rehearse and perform a short theatrical production with costumes and staging. Ages 7+. Week 5.',
+  'drama-elect-6': 'High-energy musical theater class combining song, dance, and drama. Culminates in a performance at week\'s end. Ages 7+. Week 6.',
+  'drama-elect-7': 'Perform a full play in just one week! Rehearse and perform a short theatrical production with costumes and staging. Ages 7+. Week 7.',
+  'drama-elect-8': 'High-energy musical theater class combining song, dance, and drama. Culminates in a performance at week\'s end. Ages 7+. Week 8.',
+  'drama-beg': 'Introduction to acting, storytelling, and performance for ages 5–8. Games, improvisation, and short scenes in a supportive environment.',
+  'drama-adv': 'Intermediate/advanced drama for ages 7+. Explores character development, scene work, and performance techniques leading to a presentation.',
+  // Sports
+  'golf': 'Group golf instruction at Webhannet Golf Club. Covers grip, stance, swing mechanics, and short game fundamentals. Transportation provided.',
+  'bball': 'Fun and skill-focused basketball at KBIA courts. Covers dribbling, passing, shooting, and team play for ages 7+.',
+  // Beach
+  'blg': 'Active beach and lawn games including frisbee, cornhole, volleyball, and cooperative and competitive games for all skill levels.',
+  'surf': 'Learn to surf at Gooch\'s Beach with experienced instructors. Covers ocean safety, paddling, and wave riding. Equipment and transportation provided. Ages 9+.',
+  'island': 'Full-day trip by boat to explore a nearby island and coastal habitats. Guided exploration of intertidal zones, wildlife spotting, and lunch on the island. Ages 7+.',
+  'sandcastle': 'Competitive and creative sandcastle building on the beach. Learn techniques for towers, moats, and detailed sand sculptures. Ages 7+.',
+  'sandcreate': 'Artistic sand sculpting on the beach. Create animals, figures, and scenes using only sand and natural materials. Ages 4–10.',
+  // Sailing
+  'seaflea': 'Introduction to sailing for the youngest campers (ages 4–6) using tiny Sea Flea sailboats. Supervised, calm-water sailing focusing on fun and basic boat handling.',
+  'topsail': 'Learn to sail Topsail dinghies (ages 9–10) or Laser sailboats (ages 11+). Covers rigging, points of sail, tacking, jibing, and boat handling.',
+  'tween-sail': 'Sailing for older campers (ages 11+) using larger boats. Focuses on crew work, navigation, and more advanced sailing techniques.',
+  'race': 'Competitive sailing team for experienced sailors (ages 9+). Focuses on race strategy, starting, mark rounding, and fleet racing.',
+  'cruise': 'Evening sailing experience aboard a larger vessel for ages 11+. Explore the harbor and nearby waters with a crew.',
+  // Boating
+  'pwrsq': 'Learn to drive and navigate powerboats (ages 11+). Covers boating safety, rules of the water, boat handling, and basic seamanship.',
+  'fish': 'Rod and reel fishing from the dock or boat (ages 9+). Learn to cast, identify local species, and practice catch-and-release fishing.',
+  'picnic': 'Cruise by powerboat to a nearby island for a picnic lunch (ages 9+). Enjoy coastal scenery and a relaxed nautical outing.',
+  'ocean': 'Extended powerboat adventure exploring the local ocean and coastline (ages 9+). Spot wildlife, learn about the marine environment, and navigate open water.',
+  'kayak': 'Paddling on calm harbor water using sea kayaks (ages 7+). Covers basic paddle technique, safety, and navigation.',
+  'sup': 'Stand-up paddleboarding on calm harbor water (ages 9+). Learn balance, paddle technique, and how to navigate on a paddleboard.',
+  // CIT
+  'cit-13': 'Counselor-in-Training program for 13-year-olds. Learn leadership, child development, and camp counselor responsibilities. Must enroll in at least two consecutive weeks to participate.',
+  'cit-tennis': 'CIT specialization in tennis. Assist tennis counselors at Edgcomb and begin developing coaching and instructional skills.',
+  'cit-pwrboat': 'CIT specialization in powerboating. Assist with Power Squadron and boating programs under direct staff supervision.',
+  'cit-paddle': 'CIT specialization in paddling. Assist with kayaking and SUP programs and develop leadership skills on the water.',
+  // Evening
+  'movie-g': 'Monday evening G-rated movie screening at KBIA. A relaxed family-friendly event with popcorn. Ages 5–10.',
+  'movie-pg': 'Wednesday evening PG-rated movie screening at KBIA. Popcorn and fun for slightly older campers. Ages 7–12.',
+  'teen-night': 'Thursday evening social event for teen campers. Games, activities, and time to hang out with fellow teens. Ages 13–14.',
+  'seadogs': 'Trip to a Portland Sea Dogs minor league baseball game. Transportation included. Week 6 only. Ages 11–14.',
+};
+
+function getClassDesc(cls) {
+  if (CLASS_DESCS[cls.id]) return CLASS_DESCS[cls.id];
+  const keys = Object.keys(CLASS_DESCS).filter(k => cls.id.startsWith(k)).sort((a, b) => b.length - a.length);
+  return keys.length ? CLASS_DESCS[keys[0]] : null;
+}
+
+// Handle complex multi-time-slot sailing/boating classes by providing day-specific overrides
+const SPECIAL_TIMES = {
+  'tween-sail-5': { 2: {start:16,end:18}, 3: {start:8,end:10} }, // W 4-6, Th 8-10
+  'race-5': { 0: {start:15,end:18}, 1: {start:15,end:18}, 4: {start:8,end:11} },
+  'race-6': { 0: {start:9,end:12}, 1: {start:9,end:12}, 4: {start:11,end:14} },
+  'race-7': { 0: {start:13,end:16}, 3: {start:15,end:18}, 4: {start:15,end:18} },
+  'race-8': { 0: {start:8,end:11}, 1: {start:8,end:11}, 3: {start:10,end:13} },
+  'pwrsq-7': { 0: {start:15,end:17}, 1: {start:16,end:18}, 2: {start:16,end:18} },
+  'pwrsq-8': { 0: {start:8,end:10}, 1: {start:8,end:10}, 2: {start:9,end:11} },
+  'fish-5': { 2: {start:16,end:18}, 4: {start:8,end:10} },
+  'fish-6': { 3: {start:11,end:15}, 4: {start:11,end:15} },
+  'fish-7': { 2: {start:14,end:18}, 3: {start:15,end:17}, 4: {start:16,end:18} },
+  'fish-8': { 2: {start:9,end:13}, 3: {start:10,end:14}, 4: {start:11,end:15} },
+  'seaflea-5a': { 0: {start:15,end:15.75}, 1: {start:15,end:15.75}, 2: {start:15,end:15.75}, 3: {start:16.5,end:18} },
+  'seaflea-5b': { 0: {start:16,end:16.75}, 1: {start:16,end:16.75}, 2: {start:16,end:16.75}, 3: {start:8,end:9.5} },
+  'cit-pwrboat-7': { 0: {start:13,end:15}, 1: {start:14,end:16} },
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let currentWeek = 5;
+let currentChild = ''; // set dynamically in initApp()
+let currentView = 'single';
+// schedule[child][week] = [classId, ...]
+// schedule and waitlist are initialized dynamically in initApp() after loading family
+let schedule = {};
+let waitlist = {};
+
+const CATEGORY_LABELS = {
+  bundle: 'Bundles & Starfish', pool: 'Pool / Swimming', tennis: 'Tennis', art: 'Art & Crafts', woodwork: 'Woodworking',
+  reading: 'Reading', nature: 'Nature & Science', music: 'Music', drama: 'Drama & Dance',
+  sports: 'Golf & Basketball', beach: 'Beach & Surfing', sailing: 'Sailing & Rowing',
+  boating: 'Powerboating & Kayaking', cit: 'CIT Program', evening: 'Evening Activities'
+};
+const CATEGORY_ORDER = ['bundle','pool','tennis','art','woodwork','reading','nature','music','drama','sports','beach','sailing','boating','cit','evening'];
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const DAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+// ============================================================
+// HELPERS
+// ============================================================
+function timeStr(t) {
+  if (t < 0) return '?';
+  const h = Math.floor(t);
+  const m = Math.round((t - h) * 60);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+  return `${h12}${m > 0 ? ':' + String(m).padStart(2,'0') : ''}${ampm}`;
+}
+
+function getClassTimes(cls, day) {
+  if (SPECIAL_TIMES[cls.id] && SPECIAL_TIMES[cls.id][day]) {
+    return SPECIAL_TIMES[cls.id][day];
+  }
+  return { start: cls.startTime, end: cls.endTime };
+}
+
+function getClassLocation(cls) {
+  if (cls.id.startsWith('surf-')) return 'goochs';
+  if (cls.category === 'tennis' || cls.id === 'cit-tennis') return 'edgcomb';
+  return 'kbia';
+}
+
+const TRAVEL_BUFFER = 5 / 60; // 5 minutes in decimal hours
+
+function isEligible(cls, childKey) {
+  const age = CHILDREN[childKey].age;
+  return age >= cls.ageMin && age <= cls.ageMax;
+}
+
+function isAvailableThisWeek(cls, week) {
+  return cls.weeks.includes(week);
+}
+
+function getAllScheduledIds(childKey, week) {
+  return [...schedule[childKey][week], ...waitlist[childKey][week]];
+}
+
+function hasConflict(childKey, week, newClassId) {
+  const existing = getAllScheduledIds(childKey, week);
+  const newCls = CLASSES.find(c => c.id === newClassId);
+  if (!newCls) return false;
+
+  for (const existId of existing) {
+    if (existId === newClassId) continue;
+    const existCls = CLASSES.find(c => c.id === existId);
+    if (!existCls) continue;
+
+    const buffer = (getClassLocation(newCls) !== getClassLocation(existCls)) ? TRAVEL_BUFFER : 0;
+    for (const day of newCls.days) {
+      if (!existCls.days.includes(day)) continue;
+      const newT = getClassTimes(newCls, day);
+      const existT = getClassTimes(existCls, day);
+      if (newT.start < 0 || existT.start < 0) continue;
+      if (newT.start < existT.end + buffer && existT.start < newT.end + buffer) return true;
+    }
+  }
+  return false;
+}
+
+function findAllConflicts(childKey, week) {
+  const classes = getAllScheduledIds(childKey, week);
+  const conflicts = new Set();
+  for (let i = 0; i < classes.length; i++) {
+    for (let j = i + 1; j < classes.length; j++) {
+      const a = CLASSES.find(c => c.id === classes[i]);
+      const b = CLASSES.find(c => c.id === classes[j]);
+      if (!a || !b) continue;
+      const buffer = (getClassLocation(a) !== getClassLocation(b)) ? TRAVEL_BUFFER : 0;
+      for (const day of a.days) {
+        if (!b.days.includes(day)) continue;
+        const aT = getClassTimes(a, day);
+        const bT = getClassTimes(b, day);
+        if (aT.start < 0 || bT.start < 0) continue;
+        if (aT.start < bT.end + buffer && bT.start < aT.end + buffer) {
+          conflicts.add(classes[i]);
+          conflicts.add(classes[j]);
+        }
+      }
+    }
+  }
+  return conflicts;
+}
+
+function updateCosts() {
+  let total = 0;
+  for (const child of Object.keys(CHILDREN)) {
+    let childTotal = 0;
+    for (const week of [5,6,7,8]) {
+      for (const clsId of schedule[child][week]) {
+        const cls = CLASSES.find(c => c.id === clsId);
+        if (cls) childTotal += cls.fee;
+      }
+    }
+    const costEl = document.getElementById('cost-' + child);
+    if (costEl) costEl.textContent = '$' + childTotal;
+    total += childTotal;
+  }
+  document.getElementById('costTotal').textContent = '$' + total;
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderSidebar() {
+  const container = document.getElementById('classListContainer');
+  const search = document.getElementById('searchBox').value.toLowerCase();
+  const childAge = CHILDREN[currentChild].age;
+  const addedIds = schedule[currentChild][currentWeek];
+  const waitIds = waitlist[currentChild][currentWeek];
+
+  let html = '';
+  for (const cat of CATEGORY_ORDER) {
+    const catClasses = CLASSES.filter(c =>
+      c.category === cat &&
+      c.weeks.includes(currentWeek) &&
+      isEligible(c, currentChild) &&
+      (search === '' || c.name.toLowerCase().includes(search) || (c.notes||'').toLowerCase().includes(search))
+    );
+    if (catClasses.length === 0) continue;
+
+    html += `<div class="cat-group">`;
+    html += `<div class="cat-header collapsed cat-${cat}-h" onclick="toggleCat(this)"><span>${CATEGORY_LABELS[cat]}</span><span class="arrow">▼</span></div>`;
+    html += `<div class="cat-items hidden">`;
+
+    for (const cls of catClasses) {
+      const isAdded = addedIds.includes(cls.id);
+      const isWaitlisted = waitIds.includes(cls.id);
+      const extraCls = isAdded ? 'added' : isWaitlisted ? 'waitlisted' : '';
+      const daysStr = cls.days.map(d => DAY_NAMES[d]).join('/');
+      const timeRange = cls.startTime >= 0 ? `${timeStr(cls.startTime)}-${timeStr(cls.endTime)}` : (cls.notes || 'Varies');
+
+      let clickAction;
+      if (isAdded) clickAction = `showSidebarPopup(event,'${cls.id}','confirmed')`;
+      else if (isWaitlisted) clickAction = `showSidebarPopup(event,'${cls.id}','waitlisted')`;
+      else clickAction = `showAddPopup(event,'${cls.id}')`;
+
+      const badgeCls = isAdded ? 'added' : isWaitlisted ? 'waitlisted' : 'available';
+
+      html += `<div class="class-item ${extraCls}" data-id="${cls.id}" onclick="${clickAction}">`;
+      html += `<div><div class="class-name">${cls.name}</div><div class="class-days">${daysStr} · ${timeRange}</div></div>`;
+      html += `<div class="plus-badge ${badgeCls}">+</div>`;
+      html += `</div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  container.innerHTML = html || '<div class="empty-state">No classes match your search.</div>';
+}
+
+function renderGrid() {
+  const area = document.getElementById('gridArea');
+  const conflicts = findAllConflicts(currentChild, currentWeek);
+  const START_HOUR = 8;
+  const END_HOUR = 20;
+  const HALF_HOURS = (END_HOUR - START_HOUR) * 2; // 24 half-hour rows
+
+  // Grid has: 1 header row, then 24 data rows (half-hours from 8AM to 8PM)
+  // Columns: time-label, Mon, Tue, Wed, Thu, Fri
+  // CSS grid rows are 1-indexed: row 1 = header, row 2 = 8:00, row 3 = 8:30, ...
+  // So time T maps to grid row: 2 + (T - START_HOUR) * 2
+
+  let html = '<div class="schedule-grid">';
+
+  // Header row (grid row 1)
+  html += '<div class="grid-header" style="grid-row:1;grid-column:1;"></div>';
+  for (let d = 0; d < 5; d++) {
+    html += `<div class="grid-header" style="grid-row:1;grid-column:${d+2};">${DAY_FULL[d]}</div>`;
+  }
+
+  // Time labels and background cells
+  for (let i = 0; i < HALF_HOURS; i++) {
+    const t = START_HOUR + i * 0.5;
+    const isHour = i % 2 === 0;
+    const gridRow = i + 2;
+
+    // Time label (only on hour marks)
+    html += `<div class="grid-time-label" style="grid-row:${gridRow};grid-column:1;">${isHour ? timeStr(t) : ''}</div>`;
+
+    // Day cells
+    for (let d = 0; d < 5; d++) {
+      html += `<div class="grid-cell${isHour ? ' hour-start' : ''}" style="grid-row:${gridRow};grid-column:${d+2};"></div>`;
+    }
+  }
+
+  // Place class blocks directly in the CSS grid using row spans
+  const addedIds = schedule[currentChild][currentWeek];
+  const waitIds = waitlist[currentChild][currentWeek];
+  const allIds = [...addedIds.map(id => ({id, status: 'confirmed'})), ...waitIds.map(id => ({id, status: 'waitlisted'}))];
+
+  for (const {id: clsId, status} of allIds) {
+    const cls = CLASSES.find(c => c.id === clsId);
+    if (!cls) continue;
+
+    const isWait = status === 'waitlisted';
+    const removeAction = isWait ? `removeFromWaitlist('${clsId}')` : `removeClass('${clsId}')`;
+    const statusLabel = isWait ? ' (waitlisted)' : '';
+
+    for (const day of cls.days) {
+      const times = getClassTimes(cls, day);
+      if (times.start < 0 || times.start >= END_HOUR) continue;
+
+      const startRow = 2 + Math.round((times.start - START_HOUR) * 2);
+      const endRow = 2 + Math.round((times.end - START_HOUR) * 2);
+      const span = Math.max(1, endRow - startRow);
+      const col = day + 2;
+
+      const isConflict = conflicts.has(clsId);
+      html += `<div class="class-block cat-${cls.category}${isConflict ? ' conflict' : ''}${isWait ? ' waitlisted' : ''}"
+        style="grid-row:${startRow}/span ${span};grid-column:${col};"
+        onclick="showBlockPopup(event,'${clsId}','${status}')"
+        title="${cls.name}${statusLabel}">
+        <span class="remove-x" onclick="event.stopPropagation();${removeAction}">&#10005;</span>
+        <span class="info-btn" onmouseenter="showClassTooltip(event,'${clsId}')" onmouseleave="hideClassTooltip()">i</span>
+        <span class="block-name">${cls.name}</span>
+        <span class="block-time">${timeStr(times.start)}-${timeStr(times.end)}</span>
+      </div>`;
+    }
+  }
+
+  html += '</div>';
+  area.innerHTML = html;
+
+  document.getElementById('conflictWarning').classList.toggle('show', conflicts.size > 0);
+}
+
+function renderAllKids() {
+  const container = document.getElementById('allKidsView');
+  let html = '';
+
+  for (const [childKey, child] of Object.entries(CHILDREN)) {
+    html += `<div class="kid-column" data-child="${childKey}">`;
+    html += `<h3>${child.name} (${child.age})</h3>`;
+
+    const confirmed = schedule[childKey][currentWeek];
+    const waited = waitlist[childKey][currentWeek];
+    const allClasses = [...confirmed.map(id => ({id, status:'confirmed'})), ...waited.map(id => ({id, status:'waitlisted'}))];
+
+    if (allClasses.length === 0) {
+      html += `<div class="empty-state">No classes scheduled</div>`;
+    } else {
+      const sorted = allClasses.map(e => ({...e, cls: CLASSES.find(c => c.id === e.id)})).filter(e => e.cls).sort((a,b) => {
+        const aS = a.cls.startTime >= 0 ? a.cls.startTime : 99;
+        const bS = b.cls.startTime >= 0 ? b.cls.startTime : 99;
+        return aS - bS;
+      });
+
+      const conflicts = findAllConflicts(childKey, currentWeek);
+
+      for (const {cls, status} of sorted) {
+        const isConflict = conflicts.has(cls.id);
+        const isWait = status === 'waitlisted';
+        const daysStr = cls.days.map(d => DAY_NAMES[d]).join('/');
+        const timeRange = cls.startTime >= 0 ? `${timeStr(cls.startTime)}-${timeStr(cls.endTime)}` : (cls.notes || 'Varies');
+
+        html += `<div class="kid-schedule-item cat-${cls.category}" style="${isConflict ? 'outline:2px solid red;' : ''}${isWait ? 'opacity:0.6;border-style:dashed;border:1px dashed #d69e2e;' : ''}">`;
+        html += `<span class="ks-name">${isWait ? '⏳ ' : ''}${cls.name}</span>`;
+        html += `<span class="ks-time">${daysStr} ${timeRange} · $${cls.fee}</span>`;
+        html += `</div>`;
+      }
+    }
+
+    // Weekly subtotal (confirmed only)
+    let weekTotal = 0;
+    for (const id of confirmed) {
+      const cls = CLASSES.find(c => c.id === id);
+      if (cls) weekTotal += cls.fee;
+    }
+    let waitTotal = 0;
+    for (const id of waited) {
+      const cls = CLASSES.find(c => c.id === id);
+      if (cls) waitTotal += cls.fee;
+    }
+    html += `<div style="text-align:right;font-size:12px;font-weight:600;margin-top:8px;color:#4a5568;">Week ${currentWeek}: $${weekTotal}${waitTotal > 0 ? ` <span style="color:#d69e2e;font-weight:400;">(+$${waitTotal} waitlisted)</span>` : ''}</div>`;
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function render() {
+  if (currentView === 'single') {
+    document.getElementById('mainArea').style.display = 'flex';
+    document.getElementById('allKidsView').style.display = 'none';
+    renderSidebar();
+    renderGrid();
+  } else {
+    document.getElementById('mainArea').style.display = 'none';
+    document.getElementById('allKidsView').style.display = 'grid';
+    renderAllKids();
+  }
+  updateCosts();
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+let _popup = null;
+
+function hidePopup() {
+  if (_popup) { _popup.remove(); _popup = null; }
+}
+
+function _openPopup(event, html) {
+  hidePopup();
+  const popup = document.createElement('div');
+  popup.className = 'class-popup';
+  popup.innerHTML = html;
+  popup.style.left = event.clientX + 'px';
+  popup.style.top = event.clientY + 'px';
+  document.body.appendChild(popup);
+  const rect = popup.getBoundingClientRect();
+  if (rect.right > window.innerWidth) popup.style.left = (window.innerWidth - rect.width - 8) + 'px';
+  if (rect.bottom > window.innerHeight) popup.style.top = (event.clientY - rect.height - 4) + 'px';
+  _popup = popup;
+  setTimeout(() => document.addEventListener('click', hidePopup, {once: true}), 0);
+}
+
+function showAddPopup(event, clsId) {
+  event.stopPropagation();
+  _openPopup(event, `
+    <button class="popup-btn confirm-btn" onclick="event.stopPropagation();addClass('${clsId}')">+ Confirmed</button>
+    <button class="popup-btn waitlist-btn" onclick="event.stopPropagation();addToWaitlist('${clsId}')">+ Waitlisted</button>
+  `);
+}
+
+function showSidebarPopup(event, clsId, status) {
+  event.stopPropagation();
+  if (status === 'confirmed') {
+    _openPopup(event, `
+      <button class="popup-btn waitlist-btn" onclick="event.stopPropagation();moveToWaitlist('${clsId}')">Move to Waitlist</button>
+      <button class="popup-btn remove-btn" onclick="event.stopPropagation();removeClass('${clsId}')">Remove</button>
+    `);
+  } else {
+    _openPopup(event, `
+      <button class="popup-btn confirm-btn" onclick="event.stopPropagation();moveToConfirmed('${clsId}')">Move to Confirmed</button>
+      <button class="popup-btn remove-btn" onclick="event.stopPropagation();removeFromWaitlist('${clsId}')">Remove</button>
+    `);
+  }
+}
+
+function showBlockPopup(event, clsId, status) {
+  event.stopPropagation();
+  const toggleBtn = status === 'confirmed'
+    ? `<button class="popup-btn waitlist-btn" onclick="event.stopPropagation();moveToWaitlist('${clsId}')">Move to Waitlist</button>`
+    : `<button class="popup-btn confirm-btn" onclick="event.stopPropagation();moveToConfirmed('${clsId}')">Move to Confirmed</button>`;
+  const removeBtn = status === 'confirmed'
+    ? `<button class="popup-btn remove-btn" onclick="event.stopPropagation();removeClass('${clsId}')">Remove</button>`
+    : `<button class="popup-btn remove-btn" onclick="event.stopPropagation();removeFromWaitlist('${clsId}')">Remove</button>`;
+  _openPopup(event, `${toggleBtn}${removeBtn}`);
+}
+
+let _tooltip = null;
+
+function showClassTooltip(event, clsId) {
+  hideClassTooltip();
+  const cls = CLASSES.find(c => c.id === clsId);
+  if (!cls) return;
+  const days = cls.days.map(d => DAY_NAMES[d]).join('/');
+  const time = cls.startTime >= 0 ? `${timeStr(cls.startTime)}–${timeStr(cls.endTime)}` : (cls.notes || 'Varies');
+  const desc = getClassDesc(cls);
+  const descHtml = desc ? `<div class="tt-desc">${desc}</div>` : (cls.notes ? `<div class="tt-desc">${cls.notes}</div>` : '');
+  const tooltip = document.createElement('div');
+  tooltip.className = 'class-tooltip';
+  tooltip.innerHTML = `<strong>${cls.name}</strong><div class="tt-meta">${CATEGORY_LABELS[cls.category]||cls.category} · ${days} · ${time} · $${cls.fee}</div>${descHtml}`;
+  tooltip.style.left = (event.clientX + 10) + 'px';
+  tooltip.style.top = (event.clientY + 12) + 'px';
+  document.body.appendChild(tooltip);
+  const rect = tooltip.getBoundingClientRect();
+  if (rect.right > window.innerWidth) tooltip.style.left = (window.innerWidth - rect.width - 8) + 'px';
+  if (rect.bottom > window.innerHeight) tooltip.style.top = (event.clientY - rect.height - 4) + 'px';
+  _tooltip = tooltip;
+}
+
+function hideClassTooltip() {
+  if (_tooltip) { _tooltip.remove(); _tooltip = null; }
+}
+
+function moveToWaitlist(clsId) {
+  hidePopup();
+  const sched = schedule[currentChild][currentWeek];
+  const wait = waitlist[currentChild][currentWeek];
+  const idx = sched.indexOf(clsId);
+  if (idx >= 0) { sched.splice(idx, 1); if (!wait.includes(clsId)) wait.push(clsId); saveState(); render(); }
+}
+
+function moveToConfirmed(clsId) {
+  hidePopup();
+  const sched = schedule[currentChild][currentWeek];
+  const wait = waitlist[currentChild][currentWeek];
+  const idx = wait.indexOf(clsId);
+  if (idx >= 0) { wait.splice(idx, 1); if (!sched.includes(clsId)) sched.push(clsId); saveState(); render(); }
+}
+
+function addClass(clsId) {
+  hidePopup();
+  const sched = schedule[currentChild][currentWeek];
+  const wait = waitlist[currentChild][currentWeek];
+  if (!sched.includes(clsId) && !wait.includes(clsId)) {
+    sched.push(clsId);
+    saveState();
+    render();
+  }
+}
+
+function addToWaitlist(clsId) {
+  hidePopup();
+  const sched = schedule[currentChild][currentWeek];
+  const wait = waitlist[currentChild][currentWeek];
+  if (!sched.includes(clsId) && !wait.includes(clsId)) {
+    wait.push(clsId);
+    saveState();
+    render();
+  }
+}
+
+function removeClass(clsId) {
+  const arr = schedule[currentChild][currentWeek];
+  const idx = arr.indexOf(clsId);
+  if (idx >= 0) {
+    arr.splice(idx, 1);
+    saveState();
+    render();
+  }
+}
+
+function removeFromWaitlist(clsId) {
+  const arr = waitlist[currentChild][currentWeek];
+  const idx = arr.indexOf(clsId);
+  if (idx >= 0) {
+    arr.splice(idx, 1);
+    saveState();
+    render();
+  }
+}
+
+function toggleCat(el) {
+  const wasCollapsed = el.classList.contains('collapsed');
+  // Close all categories first (accordion)
+  document.querySelectorAll('.cat-header').forEach(h => {
+    h.classList.add('collapsed');
+    h.nextElementSibling.classList.add('hidden');
+  });
+  // If it was collapsed, open it; if it was open, it stays closed
+  if (wasCollapsed) {
+    el.classList.remove('collapsed');
+    el.nextElementSibling.classList.remove('hidden');
+  }
+}
+
+// ============================================================
+// PERSISTENCE (server + localStorage cache)
+// ============================================================
+let _saveTimer = null;
+
+function saveState() {
+  // Immediate localStorage cache for fast reads
+  try {
+    localStorage.setItem('kbia2026schedule', JSON.stringify(schedule));
+    localStorage.setItem('kbia2026waitlist', JSON.stringify(waitlist));
+  } catch(e) {}
+
+  // Debounced server save
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    fetch('/api/schedule', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schedule, waitlist })
+    }).catch(err => console.warn('Failed to save to server:', err));
+  }, 1000);
+}
+
+async function loadState() {
+  // Try server first, fall back to localStorage
+  try {
+    const res = await fetch('/api/schedule');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.schedule && Object.keys(data.schedule).length > 0) {
+        for (const child of Object.keys(CHILDREN)) {
+          if (data.schedule[child]) {
+            for (const wk of [5,6,7,8]) {
+              if (Array.isArray(data.schedule[child][wk])) schedule[child][wk] = data.schedule[child][wk];
+            }
+          }
+        }
+        if (data.waitlist) {
+          for (const child of Object.keys(CHILDREN)) {
+            if (data.waitlist[child]) {
+              for (const wk of [5,6,7,8]) {
+                if (Array.isArray(data.waitlist[child][wk])) waitlist[child][wk] = data.waitlist[child][wk];
+              }
+            }
+          }
+        }
+        // Update localStorage cache with server data
+        try {
+          localStorage.setItem('kbia2026schedule', JSON.stringify(schedule));
+          localStorage.setItem('kbia2026waitlist', JSON.stringify(waitlist));
+        } catch(e) {}
+        return;
+      }
+    }
+  } catch(e) {
+    console.warn('Failed to load from server, trying localStorage:', e);
+  }
+
+  // Fall back to localStorage
+  try {
+    const saved = localStorage.getItem('kbia2026schedule');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      for (const child of Object.keys(CHILDREN)) {
+        if (parsed[child]) {
+          for (const wk of [5,6,7,8]) {
+            if (Array.isArray(parsed[child][wk])) schedule[child][wk] = parsed[child][wk];
+          }
+        }
+      }
+    }
+    const savedW = localStorage.getItem('kbia2026waitlist');
+    if (savedW) {
+      const parsed = JSON.parse(savedW);
+      for (const child of Object.keys(CHILDREN)) {
+        if (parsed[child]) {
+          for (const wk of [5,6,7,8]) {
+            if (Array.isArray(parsed[child][wk])) waitlist[child][wk] = parsed[child][wk];
+          }
+        }
+      }
+    }
+  } catch(e) {}
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+document.querySelectorAll('.week-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.week-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentWeek = parseInt(tab.dataset.week);
+    render();
+  });
+});
+
+// Child tab clicks handled via event delegation (tabs are generated dynamically)
+document.getElementById('childTabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.child-tab');
+  if (!tab) return;
+  document.querySelectorAll('.child-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  currentChild = tab.dataset.child;
+  render();
+});
+
+document.querySelectorAll('.view-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentView = btn.dataset.view;
+    render();
+  });
+});
+
+document.getElementById('searchBox').addEventListener('input', renderSidebar);
+
+// No scroll handler needed - CSS Grid handles positioning natively
+
+// Reset button
+function clearWeek() {
+  if (confirm(`Clear all of ${CHILDREN[currentChild].name}'s classes for Week ${currentWeek}?`)) {
+    schedule[currentChild][currentWeek] = [];
+    waitlist[currentChild][currentWeek] = [];
+    saveState();
+    render();
+  }
+}
+
+function clearAll() {
+  if (confirm('Clear ALL schedules for ALL children across ALL weeks?')) {
+    for (const child of Object.keys(CHILDREN)) {
+      for (const wk of [5,6,7,8]) { schedule[child][wk] = []; waitlist[child][wk] = []; }
+    }
+    saveState();
+    render();
+  }
+}
+
+// ============================================================
+// AI ASSISTANT
+// ============================================================
+// API key is now server-side — calls go through /api/ai proxy
+let aiPanelOpen = false;
+let _pendingSuggestions = null;
+let aiSessionCost = 0;
+
+function calculateApiCost(usage, model) {
+  const RATES = {
+    'claude-sonnet-4-6': { input: 3.00, output: 15.00 }
+  };
+  const rate = RATES[model] || RATES['claude-sonnet-4-6'];
+  const inputCost = (usage.input_tokens || 0) / 1_000_000 * rate.input;
+  const outputCost = (usage.output_tokens || 0) / 1_000_000 * rate.output;
+  return inputCost + outputCost;
+}
+
+function addCostMessage(usage, model) {
+  const cost = calculateApiCost(usage, model);
+  aiSessionCost += cost;
+  const fmt = n => n < 0.01 ? n.toFixed(4) : n.toFixed(3);
+  const container = document.getElementById('aiMessages');
+  const div = document.createElement('div');
+  div.className = 'ai-cost';
+  div.textContent = `${(usage.input_tokens||0).toLocaleString()} in · ${(usage.output_tokens||0).toLocaleString()} out · $${fmt(cost)} (session: $${fmt(aiSessionCost)})`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function toggleAiPanel() {
+  aiPanelOpen = !aiPanelOpen;
+  document.getElementById('aiPanel').classList.toggle('hidden', !aiPanelOpen);
+  document.getElementById('aiToggleBtn').classList.toggle('active', aiPanelOpen);
+}
+
+function mdToHtml(text) {
+  // Escape HTML first
+  let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Bold
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // Bullet lists (lines starting with - or *)
+  s = s.replace(/((?:^[ \t]*[-*] .+\n?)+)/gm, (block) => {
+    const items = block.trim().split('\n').map(l => `<li>${l.replace(/^[ \t]*[-*] /, '')}</li>`).join('');
+    return `<ul>${items}</ul>`;
+  });
+  // Numbered lists
+  s = s.replace(/((?:^[ \t]*\d+\. .+\n?)+)/gm, (block) => {
+    const items = block.trim().split('\n').map(l => `<li>${l.replace(/^[ \t]*\d+\. /, '')}</li>`).join('');
+    return `<ol>${items}</ol>`;
+  });
+  // Paragraphs (double newline)
+  s = s.split(/\n{2,}/).map(p => p.trim() ? `<p>${p.replace(/\n/g,'<br>')}</p>` : '').join('');
+  return s;
+}
+
+function addAiMessage(role, text) {
+  const container = document.getElementById('aiMessages');
+  const div = document.createElement('div');
+  div.className = 'ai-msg ' + role;
+  if (role === 'assistant') {
+    div.innerHTML = mdToHtml(text);
+  } else {
+    div.textContent = text;
+  }
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeThinkingMessage() {
+  const msgs = document.getElementById('aiMessages');
+  const thinking = msgs.querySelector('.ai-msg.thinking');
+  if (thinking) thinking.remove();
+}
+
+function buildSystemPrompt() {
+  const child = CHILDREN[currentChild];
+  const week = currentWeek;
+  const weekClasses = schedule[currentChild][week];
+  const waitClasses = waitlist[currentChild][week];
+  const allIds = [...weekClasses, ...waitClasses];
+  const conflicts = findAllConflicts(currentChild, week);
+  const weekDates = {5:'Jul 20-24', 6:'Jul 27-31', 7:'Aug 3-7', 8:'Aug 10-14'};
+
+  // Current confirmed schedule
+  const confirmedStr = weekClasses.map(id => {
+    const c = CLASSES.find(cl => cl.id === id);
+    if (!c) return null;
+    const days = c.days.map(d => DAY_NAMES[d]).join('/');
+    const time = c.startTime >= 0 ? `${timeStr(c.startTime)}-${timeStr(c.endTime)}` : (c.notes || 'Varies');
+    return `  - ${c.id}: "${c.name}" | ${days} ${time} | $${c.fee}${conflicts.has(c.id) ? ' [CONFLICT]' : ''}`;
+  }).filter(Boolean).join('\n');
+
+  // Waitlisted classes
+  const waitStr = waitClasses.map(id => {
+    const c = CLASSES.find(cl => cl.id === id);
+    if (!c) return null;
+    const days = c.days.map(d => DAY_NAMES[d]).join('/');
+    const time = c.startTime >= 0 ? `${timeStr(c.startTime)}-${timeStr(c.endTime)}` : (c.notes || 'Varies');
+    return `  - ${c.id}: "${c.name}" [WAITLISTED] | ${days} ${time} | $${c.fee}${conflicts.has(c.id) ? ' [CONFLICT]' : ''}`;
+  }).filter(Boolean).join('\n');
+
+  // Conflict pairs (check all scheduled + waitlisted)
+  let conflictDetail = '';
+  if (conflicts.size > 0) {
+    conflictDetail = '\n## ACTIVE CONFLICTS\n';
+    for (let i = 0; i < allIds.length; i++) {
+      for (let j = i + 1; j < allIds.length; j++) {
+        const a = CLASSES.find(c => c.id === allIds[i]);
+        const b = CLASSES.find(c => c.id === allIds[j]);
+        if (!a || !b) continue;
+        const buf = (getClassLocation(a) !== getClassLocation(b)) ? TRAVEL_BUFFER : 0;
+        for (const day of a.days) {
+          if (!b.days.includes(day)) continue;
+          const aT = getClassTimes(a, day);
+          const bT = getClassTimes(b, day);
+          if (aT.start < 0 || bT.start < 0) continue;
+          if (aT.start < bT.end + buf && bT.start < aT.end + buf) {
+            const aStatus = waitClasses.includes(allIds[i]) ? ' (waitlisted)' : '';
+            const bStatus = waitClasses.includes(allIds[j]) ? ' (waitlisted)' : '';
+            const travelNote = buf > 0 ? ' [travel conflict]' : '';
+            conflictDetail += `  - "${a.name}"${aStatus} and "${b.name}"${bStatus} overlap on ${DAY_FULL[day]} (${timeStr(aT.start)}-${timeStr(aT.end)} vs ${timeStr(bT.start)}-${timeStr(bT.end)})${travelNote}\n`;
+          }
+        }
+      }
+    }
+  }
+
+  // Available classes THIS WEEK (eligible, not already added or waitlisted)
+  const eligible = CLASSES.filter(c =>
+    isEligible(c, currentChild) &&
+    c.weeks.includes(week) &&
+    !allIds.includes(c.id)
+  );
+  const availableStr = eligible.map(c => {
+    const days = c.days.map(d => DAY_NAMES[d]).join('/');
+    const time = c.startTime >= 0 ? `${timeStr(c.startTime)}-${timeStr(c.endTime)}` : (c.notes || 'Varies');
+    return `  - ${c.id}: "${c.name}" | ${CATEGORY_LABELS[c.category] || c.category} | ${days} ${time} | $${c.fee}`;
+  }).join('\n');
+
+  // Cross-week reference: eligible classes NOT in the current week (compact format)
+  const allEligible = CLASSES.filter(c => isEligible(c, currentChild) && !c.weeks.includes(week));
+  const allClassRef = allEligible.map(c => {
+    const wks = c.weeks.join(',');
+    return `  - "${c.name}" (${CATEGORY_LABELS[c.category] || c.category}) wks ${wks}`;
+  }).join('\n');
+
+  return `You are a confident, opinionated summer camp scheduling advisor for KBIA 2026 (Kennebunkport, Maine).
+
+GUARDRAIL: You help with anything related to KBIA summer camp — scheduling, class availability, activity details, age eligibility, costs, timing questions, what's offered which weeks, recommendations, comparisons, logistics, etc. Answer informational questions fully using the class data below (e.g. "which weeks is water polo available?" or "what can a 5-year-old do in the afternoon?"). Only decline questions that are completely unrelated to camp (homework, general trivia, recipes, etc.) — for those, redirect: "I'm focused on KBIA camp scheduling — what can I help you plan?"
+
+You make strong recommendations based on what's best for each child. Don't hedge or offer too many alternatives — pick the best option and commit to it. Use language like "I'd go with", "You should", "Drop X and grab Y instead". Be direct and practical, like a friend who knows the program well.
+
+When you see problems (conflicts, empty mornings, lopsided schedules), call them out proactively. If the schedule is light, say so and push to fill it. If something doesn't make sense for the child's age, flag it.
+
+## CURRENT CONTEXT
+- Child: ${child.name} (age ${child.age})
+- Week: ${week} (${weekDates[week]})
+- Days: Mon=M, Tue=Tu, Wed=W, Thu=Th, Fri=F
+
+## CONFIRMED CLASSES (Week ${week} for ${child.name})
+${confirmedStr || '  (none confirmed yet)'}
+
+## WAITLISTED CLASSES
+${waitStr || '  (none waitlisted)'}
+${conflictDetail}
+## AVAILABLE CLASSES THIS WEEK (eligible for ${child.name}, week ${week}, not yet scheduled)
+${availableStr || '  (none)'}
+
+## ELIGIBLE CLASSES IN OTHER WEEKS (not week ${week})
+Use this for cross-week questions like "which weeks is X available?" Full details available in the current week's list above.
+${allClassRef || '  (none — all eligible classes are in week ' + week + ')'}
+
+## KBIA PROGRAM INFO (for answering descriptive questions)
+KBIA (Kennebunk Beach Improvement Association) is a summer program in Kennebunkport, Maine running weeks 1-8 (we cover weeks 5-8: Jul 20 - Aug 14). Registration is a la carte.
+
+Category descriptions:
+- Pool/Swimming: Private/semi-private swim lessons at the KBIA pool. Swim Team is competitive practice. Jr. Lifeguarding for 13-14. Water Polo wk5 only. Diving available 5+.
+- Tennis: At Edgcomb courts. Stroke Development (beginner/intermediate), Advanced Stroke Dev, Match Play (competitive), Game Play (fun matches).
+- Art & Crafts: Creative Arts (MWF, painting/drawing/mixed media), Sculpture (TuTh, clay/3D), Art Electives 9+ (TuTh, rotating: Comic Book Design, Printmaking, Recycle Art, Mixed Media, Mural, Fashion Design). Beading/Textile Jewelry, Leathercrafts.
+- Woodworking: Intro (basic tools, simple project), Exploring (intermediate), Models & Sculptures (advanced, TuTh).
+- Reading: Age-grouped reading programs with books and discussion. Beachcomber Book Club, Titles & Tidepools (5-6), Word Wizards (9+, creative writing).
+- Nature & Science: Outdoor exploration, tide pools, beach ecology. Marine Biology offered in age groups with boat trips and specimen collection.
+- Music: Ukulele (by age group, MWF), Songwriting 7-12 (original songs, MWF).
+- Drama: Play in a Week (wks 5,7), Musical Theater Dance (wks 6,8), Beginner Drama 5-8, Drama 7+.
+- Golf: At Webhannet Golf Club. MTuW mornings, age-grouped. Wk8 shorter (TuW only).
+- Basketball: Skills clinics M/W/F, age 7+.
+- Beach & Surfing: Beach & Lawn Games (TuTh by age), Surfing 9+ at Gooch's Beach (individual day signup TuWThF). Island & Seaside Exploration (full-day trips). Sand Castle Building, Sand Creations.
+- Sailing: Gollywobblers 7-8 (intro), Topsails 9-10, Laser 11+ (same schedule as Topsails), Tween Sailing 11+, Race Team 9+ (competitive, 3 days/wk), Cruisin' with a Crew 11+ (wks 5,7 only). Sea Fleas/Rowing for ages 4-6.
+- Powerboating: Power Squadron 11+ (motorboat handling), Fishing 9+, Island Picnic at Sea 9+, Ocean Explorers 9+ (wks 6,8).
+- Kayaking & SUP: Tide-dependent scheduling, varies by week. Kayaking 7+, SUP 9+.
+- CIT: Counselor-in-Training for 13-14. General CIT (MTh), CIT Tennis, CIT Powerboat, CIT Paddle.
+- Evening: G-Rated Movie Night 5-10 (Mon), PG Movie Night 7-12 (Wed), Tween Night 11-12 (Tue), Teen Night 13-14 (Thu), Sea Dogs Game wk6.
+- Bundles: Pre-packaged half-day combos. Starfish (4-5 drop-off AM), AM/PM Swimming/Reading Bundles, Sports Bundle 9+ (basketball, golf, surfing, diving), Creative Minds 7+ (ukulele, songwriting, drama).
+
+## RESPONSE FORMAT
+Respond with ONLY valid JSON (no markdown fences, no extra text):
+{
+  "message": "Your direct, confident recommendation with reasoning",
+  "actions": [
+    { "type": "add", "classId": "exact-class-id", "reason": "Brief reason" },
+    { "type": "remove", "classId": "exact-class-id", "reason": "Brief reason" },
+    { "type": "waitlist", "classId": "exact-class-id", "reason": "Brief reason" },
+    { "type": "unwaitlist", "classId": "exact-class-id", "reason": "Brief reason" }
+  ]
+}
+
+Action types:
+- "add": Add a class as CONFIRMED. classId must be from AVAILABLE CLASSES.
+- "waitlist": Add a class as WAITLISTED. classId must be from AVAILABLE CLASSES.
+- "remove": Remove a confirmed class. classId must be from CONFIRMED CLASSES.
+- "unwaitlist": Remove a waitlisted class. classId must be from WAITLISTED CLASSES.
+
+Rules:
+- Only use classId values from the lists above. Use EXACT id strings.
+- Check times carefully: do NOT suggest adding a class that overlaps with existing ones (unless you also remove the conflicting one).
+- When resolving conflicts, make a clear call on which class to drop and what to replace it with.
+- When filling schedules, build a well-rounded day. Push for 4-6 activities covering different categories. Favor active/outdoor in the morning and creative/chill in the afternoon.
+- Be aware of waitlisted classes — they occupy time slots too. If a waitlisted class conflicts with something, mention it.
+- If you notice the schedule is thin, say so and suggest more.
+- For informational questions (availability, eligibility, "what weeks is X offered?"), answer fully in the message field and set actions to []. You don't need to suggest schedule changes for every question — just answer what was asked.
+- If the request is completely off-topic, return empty actions [] and redirect.
+- Keep your message punchy but complete. Be friendly and decisive.`;
+}
+
+async function sendToAi(userMessage) {
+  addAiMessage('user', userMessage);
+  addAiMessage('thinking', 'Thinking...');
+  document.getElementById('aiSendBtn').disabled = true;
+  document.getElementById('aiSuggestions').innerHTML = '';
+  _pendingSuggestions = null;
+
+  try {
+    const response = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2048,
+        system: buildSystemPrompt(),
+        messages: [{ role: 'user', content: userMessage }]
+      })
+    });
+
+    removeThinkingMessage();
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`API ${response.status}: ${errText.substring(0, 200)}`);
+    }
+
+    const data = await response.json();
+    const text = data.content[0].text;
+    const parsed = parseAiResponse(text);
+    renderSuggestions(parsed);
+    if (data.usage) addCostMessage(data.usage, 'claude-sonnet-4-6');
+
+  } catch (err) {
+    removeThinkingMessage();
+    addAiMessage('error', 'Error: ' + err.message);
+  } finally {
+    document.getElementById('aiSendBtn').disabled = false;
+  }
+}
+
+function parseAiResponse(text) {
+  let jsonStr = text.trim();
+
+  // Strip markdown code fences
+  const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) jsonStr = fenceMatch[1].trim();
+
+  // Find JSON object if wrapped in text
+  if (!jsonStr.startsWith('{')) {
+    const start = jsonStr.indexOf('{');
+    const end = jsonStr.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      jsonStr = jsonStr.substring(start, end + 1);
+    }
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch (e) {
+    return { message: text, actions: [] };
+  }
+
+  if (!parsed.message) parsed.message = 'Here are my suggestions:';
+  if (!Array.isArray(parsed.actions)) parsed.actions = [];
+
+  // Validate each action
+  const weekClasses = schedule[currentChild][currentWeek];
+  const waitClasses = waitlist[currentChild][currentWeek];
+  const allIds = [...weekClasses, ...waitClasses];
+  parsed.actions = parsed.actions.filter(a => {
+    const validTypes = ['add', 'remove', 'waitlist', 'unwaitlist'];
+    if (!validTypes.includes(a.type)) return false;
+    if (!a.classId) return false;
+    const cls = CLASSES.find(c => c.id === a.classId);
+    if (!cls) return false;
+    if (a.type === 'add' || a.type === 'waitlist') {
+      if (!isEligible(cls, currentChild) || !cls.weeks.includes(currentWeek)) return false;
+      if (allIds.includes(a.classId)) return false;
+    }
+    if (a.type === 'remove') {
+      if (!weekClasses.includes(a.classId)) return false;
+    }
+    if (a.type === 'unwaitlist') {
+      if (!waitClasses.includes(a.classId)) return false;
+    }
+    return true;
+  });
+
+  return parsed;
+}
+
+function renderSuggestions(parsed) {
+  addAiMessage('assistant', parsed.message);
+
+  const container = document.getElementById('aiSuggestions');
+  if (parsed.actions.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let html = '';
+  for (let i = 0; i < parsed.actions.length; i++) {
+    const action = parsed.actions[i];
+    const cls = CLASSES.find(c => c.id === action.classId);
+    if (!cls) continue;
+
+    const days = cls.days.map(d => DAY_NAMES[d]).join('/');
+    const time = cls.startTime >= 0 ? `${timeStr(cls.startTime)}-${timeStr(cls.endTime)}` : (cls.notes || 'Varies');
+    const isRemove = action.type === 'remove' || action.type === 'unwaitlist';
+    const isWaitlist = action.type === 'waitlist';
+    const cardClass = isRemove ? 'suggestion-card remove-card' : 'suggestion-card';
+    const icon = isRemove ? 'Remove' : isWaitlist ? '⏳ Waitlist' : '+ Add';
+    const actionLabel = isRemove ? 'Click to remove' : isWaitlist ? 'Click to waitlist' : 'Click to add';
+
+    html += `<div class="${cardClass}" id="sg-${i}" onclick="applySuggestion('${action.type}','${action.classId}',${i})">
+      <div class="sg-name">${icon}: ${cls.name}</div>
+      <div class="sg-detail">${days} ${time} | $${cls.fee} | ${CATEGORY_LABELS[cls.category] || cls.category}</div>
+      <div class="sg-detail">${action.reason || ''}</div>
+      <div class="sg-action">${actionLabel}</div>
+    </div>`;
+  }
+
+  if (parsed.actions.length > 1) {
+    html += `<button class="apply-all-btn" onclick="applyAllSuggestions()">Apply All Suggestions</button>`;
+  }
+
+  container.innerHTML = html;
+  _pendingSuggestions = parsed.actions;
+}
+
+function applySuggestion(type, classId, index) {
+  if (type === 'add') addClass(classId);
+  else if (type === 'waitlist') addToWaitlist(classId);
+  else if (type === 'remove') removeClass(classId);
+  else if (type === 'unwaitlist') removeFromWaitlist(classId);
+  const card = document.getElementById('sg-' + index);
+  if (card) {
+    card.classList.add('applied');
+    card.querySelector('.sg-action').textContent = 'Applied';
+  }
+}
+
+function applyAllSuggestions() {
+  if (!_pendingSuggestions) return;
+  for (const action of _pendingSuggestions) {
+    const sched = schedule[currentChild][currentWeek];
+    const wait = waitlist[currentChild][currentWeek];
+    if (action.type === 'add') {
+      if (!sched.includes(action.classId) && !wait.includes(action.classId)) sched.push(action.classId);
+    } else if (action.type === 'waitlist') {
+      if (!sched.includes(action.classId) && !wait.includes(action.classId)) wait.push(action.classId);
+    } else if (action.type === 'remove') {
+      const idx = sched.indexOf(action.classId);
+      if (idx >= 0) sched.splice(idx, 1);
+    } else if (action.type === 'unwaitlist') {
+      const idx = wait.indexOf(action.classId);
+      if (idx >= 0) wait.splice(idx, 1);
+    }
+  }
+  saveState();
+  render();
+  document.querySelectorAll('.suggestion-card').forEach(c => c.classList.add('applied'));
+  document.querySelectorAll('.sg-action').forEach(a => a.textContent = 'Applied');
+  _pendingSuggestions = null;
+}
+
+function askConflictHelp() {
+  const conflicts = findAllConflicts(currentChild, currentWeek);
+  if (conflicts.size === 0) {
+    addAiMessage('assistant', `No conflicts in ${CHILDREN[currentChild].name}'s Week ${currentWeek} schedule!`);
+    return;
+  }
+  sendToAi(`${CHILDREN[currentChild].name}'s schedule has time conflicts. Tell me exactly which class to drop for each conflict and what to replace it with. Make the call — don't give me multiple options, just your best recommendation.`);
+}
+
+function askFillSchedule() {
+  const child = CHILDREN[currentChild];
+  sendToAi(`Build out ${child.name}'s Week ${currentWeek} schedule. Look at what's missing and fill the gaps — I want a solid, full day. Pick the best classes for a ${child.age}-year-old and just add them. Go for 4-6 activities if the schedule is light.`);
+}
+
+function sendAiRequest() {
+  const input = document.getElementById('aiInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  sendToAi(text);
+}
+
+// ============================================================
+// IMPORT SCHEDULE
+// ============================================================
+function handleImportFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = ''; // reset so same file can be re-selected
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    if (!text.trim()) { addAiMessage('error', 'File is empty.'); return; }
+    parseImportWithAi(text);
+  };
+  reader.readAsText(file);
+}
+
+async function parseImportWithAi(csvText) {
+
+  // Make sure AI panel is open
+  if (!aiPanelOpen) toggleAiPanel();
+
+  addAiMessage('user', 'Importing schedule from file...');
+  addAiMessage('thinking', 'Reading and matching classes...');
+  document.getElementById('aiSendBtn').disabled = true;
+
+  // Build a compact class reference for matching
+  const classRef = CLASSES.map(c => {
+    const wks = c.weeks.join(',');
+    const ages = `${c.ageMin}-${c.ageMax}`;
+    const days = c.days.map(d => DAY_NAMES[d]).join('/');
+    const time = c.startTime >= 0 ? `${timeStr(c.startTime)}-${timeStr(c.endTime)}` : (c.notes || 'Varies');
+    return `${c.id} | "${c.name}" | ${c.category} | ages ${ages} | wks ${wks} | ${days} ${time}`;
+  }).join('\n');
+
+  const systemPrompt = `You are a data parser for a KBIA summer camp scheduling app. Your job is to read a spreadsheet export and match each class entry to the correct class ID from the app's database.
+
+## CHILDREN
+${Object.entries(CHILDREN).map(([k,v]) => `- ${k}: age ${v.age}`).join('\n')}
+
+## WEEKS
+- Week 5: July 20-24
+- Week 6: July 27-31
+- Week 7: Aug 3-7
+- Week 8: Aug 10-14
+
+## CLASS DATABASE (id | name | category | ages | weeks | schedule)
+${classRef}
+
+## YOUR TASK — FOLLOW THESE STEPS IN EXACT ORDER
+For each class entry in the spreadsheet:
+
+**STEP 1 (MANDATORY FIRST): CHECK FOR MARK — this is the gatekeeper.**
+Look at the mark/status column for this entry. There are ONLY three possibilities:
+- "X" or "x" → status is "confirmed" → proceed to step 2
+- "W" or "w" → status is "waitlisted" → proceed to step 2
+- ANYTHING ELSE (blank, empty, no letter, just whitespace, "BACKUP", any other text) → **SKIP THIS ENTRY ENTIRELY. Do NOT include it in "imports" OR "ambiguous". Do NOT try to match it. Move to the next entry.**
+
+**STEP 2: Identify child and week**
+- Which child (caroline, max, jack) and which week (5, 6, 7, 8)
+
+**STEP 3: Match to database — confident, expand, or ambiguous**
+Cross-reference against the CLASS DATABASE to find the correct classId(s). Classify each entry:
+
+**CONFIDENT match** → put in "imports" array. Use when there is ONE clear match, OR when a single entry clearly covers a combined time block that maps to multiple classes the user definitely signed up for together.
+- Example: "Water Polo MWF 5-6pm" → EXPAND to water-polo-5 AND water-polo-530 (these are two halves of the same session, user signed up for both)
+
+**AMBIGUOUS match** → put in "ambiguous" array. Use ONLY when the entry HAS a mark (X/x/W/w) AND could refer to multiple DISTINCT class options. If the entry has NO mark, it goes NOWHERE — not in imports, not in ambiguous. Skip it.
+- Example: "Surfing" → could be surf-tu, surf-w, surf-th, or surf-f (each is a separate class on a different day — you don't know which day(s) the user picked)
+- Example: "Sea Fleas" → could be session A or session B
+
+Always verify age-eligibility and week availability for each option.
+
+## REASONING REQUIREMENT
+For EVERY entry with a mark, you MUST reason carefully before matching. Do NOT just pattern-match on the name — actually think it through:
+
+1. **Search the database broadly.** The spreadsheet name may be informal, abbreviated, a nickname, or use different terminology than the database. Consider synonyms, abbreviations, acronyms, and related terms. A name might refer to an activity, a venue, a team, or an event — think about what it could mean in a summer camp context and find the best match in the database.
+2. **Verify week availability.** After finding a candidate match, CHECK that the class is actually offered in the specified week. If it is NOT, ask yourself: what class in the same category or time slot IS available that week? The user likely means that one instead.
+3. **Compare time ranges and expand.** Compare the spreadsheet's time range against the matched class time(s). If the spreadsheet shows a wider time range than any single class, look for multiple classes that together cover that range. Output each as a separate entry.
+4. **Verify age eligibility.** Confirm the child meets the age requirement.
+
+The user's spreadsheet is their personal tracking sheet — names will NOT always match the database exactly. Your job is to figure out what they actually mean by searching the database and reasoning about context.
+
+## MATCHING RULES
+- "Sports Bundle" wks 5-7 → sports-bundle-567, wk 8 → sports-bundle-8
+- "Tennis Match Play" → tennis-match
+- "Tennis Game Play" → tennis-gp
+- "Tennis" with time 12:00-12:30 for ages 4-6 → tennis-sd-46-12; for ages 7-10 → tennis-sd-710-12
+- "Tennis" with time 12:30-1:00 for ages 4-6 → tennis-sd-46-1230; for ages 7-10 → tennis-sd-710-1230
+- "Tennis" with time 2:00-2:30 for ages 4-6 → tennis-sd-46-2; for ages 7-10 → tennis-sd-710-2
+- "Starfish 4-5" → starfish
+- "Bundle" / "Bundle Swimming" → match to the correct bundle based on the child's age (e.g., age 5-6 → am-swim-56, age 7-8 → am-swim-78, age 9-10 → am-swim-910)
+- "CIT Age 13" → cit-13
+- "CIT Tennis" → cit-tennis
+- "CIT SUP" / "CIT Paddle" / "CIT Paddleboard" → cit-paddle-{week}
+- "Tween Sailing" → tween-sail-{week}
+- "Sea Fleas" → seaflea-{week}a (default session A)
+- "Titles Tidepool" / "Titles and Tidepools" → tidepools
+- "Creative Arts 4-5" / "Creative Arts" for ages 4-5 → artexplore-45
+- "Creative Arts" MWF for ages 5-6 → creart-56; ages 9-10 → creart-910; etc.
+- "Fishing" → fish-{week}
+- "Ocean Explorers" → ocean-{week} (only wks 6,8)
+- "Water Polo" → check database for all water polo classes and their times; expand if needed
+- "Swim Team" → swim-team
+- "Teen Night" → teen-night
+- "Sea Dogs" / "Sea Dogs Game" → search the database, check week availability, and reason about what the user actually means
+- "Surfing" → AMBIGUOUS: offered as separate day classes (surf-tu, surf-w, surf-th, surf-f). Put in ambiguous array.
+- "Basketball Camp" — not in our database, skip and note in message
+- "SMFC Keepers/Strikers" — not in our database, skip and note in message
+
+## RESPONSE FORMAT
+Return ONLY valid JSON (no markdown fences):
+{
+  "message": "Summary of what was imported and any issues found",
+  "imports": [
+    { "child": "caroline", "week": 5, "classId": "water-polo-5", "status": "waitlisted", "originalName": "Water Polo 5-6pm (1 of 2)" },
+    { "child": "caroline", "week": 5, "classId": "water-polo-530", "status": "waitlisted", "originalName": "Water Polo 5-6pm (2 of 2)" }
+  ],
+  "ambiguous": [
+    {
+      "child": "caroline", "week": 5, "status": "confirmed",
+      "originalName": "Surfing 10-11:30",
+      "reason": "Surfing is offered as separate day classes. Which day(s) did you sign up for?",
+      "options": ["surf-tu", "surf-w", "surf-th", "surf-f"]
+    }
+  ]
+}
+
+Rules:
+- **MOST IMPORTANT RULE: If an entry has NO "X", "x", "W", or "w" mark, it MUST be excluded from BOTH "imports" AND "ambiguous". Zero tolerance. No mark = not signed up = skip completely. This applies even if the class name appears interesting or matchable.**
+- Use EXACT classId values from the database. Double-check each one exists.
+- When one spreadsheet entry maps to multiple database classes that are clearly part of a SINGLE combined session, create a separate import entry for EACH in "imports", and note "(1 of N)", "(2 of N)" etc in originalName.
+- When one entry could refer to multiple DISTINCT options (different days, different sessions), put it in "ambiguous" with ALL valid options listed. Do NOT guess — let the user pick.
+- child must be one of: ${Object.keys(CHILDREN).map(k => `"${k}"`).join(', ')} (lowercase).
+- week must be 5, 6, 7, or 8.
+- In the message, mention any entries you skipped (no mark) and any you couldn't match.
+- Include originalName showing what the spreadsheet said, for user review.`;
+
+  try {
+    const response = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 16000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: 'Parse this spreadsheet:\n\n' + csvText }]
+      })
+    });
+
+    removeThinkingMessage();
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`API ${response.status}: ${errText.substring(0, 200)}`);
+    }
+
+    const data = await response.json();
+    const text = data.content[0].text;
+    const parsed = parseImportResponse(text);
+    renderImportReview(parsed);
+    if (data.usage) addCostMessage(data.usage, 'claude-sonnet-4-6');
+
+  } catch (err) {
+    removeThinkingMessage();
+    addAiMessage('error', 'Import error: ' + err.message);
+  } finally {
+    document.getElementById('aiSendBtn').disabled = false;
+  }
+}
+
+function parseImportResponse(text) {
+  let jsonStr = text.trim();
+  const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) jsonStr = fenceMatch[1].trim();
+  if (!jsonStr.startsWith('{')) {
+    const start = jsonStr.indexOf('{');
+    const end = jsonStr.lastIndexOf('}');
+    if (start >= 0 && end > start) jsonStr = jsonStr.substring(start, end + 1);
+  }
+
+  let parsed;
+  try { parsed = JSON.parse(jsonStr); } catch(e) { return { message: 'Failed to parse AI response.', imports: [], ambiguous: [] }; }
+
+  if (!parsed.message) parsed.message = 'Import parsed.';
+  if (!Array.isArray(parsed.imports)) parsed.imports = [];
+  if (!Array.isArray(parsed.ambiguous)) parsed.ambiguous = [];
+
+  // Validate confident entries
+  parsed.imports = parsed.imports.filter(imp => {
+    if (!['caroline','max','jack'].includes(imp.child)) return false;
+    if (![5,6,7,8].includes(imp.week)) return false;
+    if (!imp.classId || !CLASSES.find(c => c.id === imp.classId)) return false;
+    if (!['confirmed','waitlisted'].includes(imp.status)) return false;
+    const cls = CLASSES.find(c => c.id === imp.classId);
+    if (!isEligible(cls, imp.child)) return false;
+    if (!cls.weeks.includes(imp.week)) return false;
+    return true;
+  });
+
+  // Validate ambiguous entries
+  parsed.ambiguous = parsed.ambiguous.filter(amb => {
+    if (!['caroline','max','jack'].includes(amb.child)) return false;
+    if (![5,6,7,8].includes(amb.week)) return false;
+    if (!['confirmed','waitlisted'].includes(amb.status)) return false;
+    if (!Array.isArray(amb.options) || amb.options.length < 2) return false;
+    // Filter options to only valid classIds
+    amb.options = amb.options.filter(optId => {
+      const cls = CLASSES.find(c => c.id === optId);
+      return cls && isEligible(cls, amb.child) && cls.weeks.includes(amb.week);
+    });
+    return amb.options.length >= 2;
+  });
+
+  return parsed;
+}
+
+function renderImportReview(parsed) {
+  addAiMessage('assistant', parsed.message);
+
+  if (parsed.imports.length === 0 && parsed.ambiguous.length === 0) {
+    addAiMessage('assistant', 'No valid class matches found in the file.');
+    return;
+  }
+
+  // Group by child → week
+  const grouped = {};
+  for (const imp of parsed.imports) {
+    if (!grouped[imp.child]) grouped[imp.child] = {};
+    if (!grouped[imp.child][imp.week]) grouped[imp.child][imp.week] = [];
+    grouped[imp.child][imp.week].push(imp);
+  }
+
+  let html = '<div class="import-section"><h4>Review Import</h4>';
+
+  let idx = 0;
+  for (const childKey of ['caroline','max','jack']) {
+    if (!grouped[childKey]) continue;
+    const child = CHILDREN[childKey];
+    html += `<div class="import-child-group">`;
+    html += `<div class="import-child-header">${child.name} (${child.age})</div>`;
+
+    for (const week of [5,6,7,8]) {
+      if (!grouped[childKey][week]) continue;
+      html += `<div class="import-week-group">`;
+      html += `<div class="import-week-label">Week ${week}</div>`;
+
+      for (const imp of grouped[childKey][week]) {
+        const cls = CLASSES.find(c => c.id === imp.classId);
+        if (!cls) { idx++; continue; }
+        const checked = 'checked';
+        const matchNote = '';
+
+        // Build display name with age range if not already in name
+        const DAY_SHORT_IMP = ['M','T','W','Th','F'];
+        let displayName = cls.name;
+        if (!cls.name.match(/\(\d+-\d+\)|\(\d+\+\)/)) {
+          const ageStr = cls.ageMax >= 99 ? `${cls.ageMin}+` : (cls.ageMin === cls.ageMax ? `${cls.ageMin}` : `${cls.ageMin}-${cls.ageMax}`);
+          displayName += ` (${ageStr})`;
+        }
+
+        // Build schedule lines, grouping days by time
+        let schedLines = [];
+        const specials = SPECIAL_TIMES[cls.id];
+        if (!specials) {
+          const daysStr = cls.days.map(d => DAY_SHORT_IMP[d]).join(',');
+          const timeRange = cls.startTime >= 0 ? `${timeStr(cls.startTime)}-${timeStr(cls.endTime)}` : (cls.notes || 'Varies');
+          schedLines.push(`${daysStr} ${timeRange}`);
+        } else {
+          const timeGroups = {};
+          for (const day of cls.days) {
+            const times = getClassTimes(cls, day);
+            const key = `${times.start}-${times.end}`;
+            if (!timeGroups[key]) timeGroups[key] = { start: times.start, end: times.end, days: [] };
+            timeGroups[key].days.push(day);
+          }
+          for (const g of Object.values(timeGroups)) {
+            schedLines.push(`${g.days.map(d => DAY_SHORT_IMP[d]).join(',')} ${timeStr(g.start)}-${timeStr(g.end)}`);
+          }
+        }
+
+        html += `<div class="import-row">
+          <input type="checkbox" id="imp-${idx}" data-child="${childKey}" data-week="${week}" data-classid="${imp.classId}" data-status="${imp.status}" ${checked}>
+          <div class="ir-details">
+            <div class="ir-line1">
+              <span class="ir-name">${displayName}</span>
+              <span class="ir-status ${imp.status}">${imp.status}</span>
+            </div>
+            ${matchNote ? `<div class="ir-note">${matchNote}</div>` : ''}
+            ${schedLines.map(line => `<div class="ir-schedule">${line}</div>`).join('')}
+          </div>
+        </div>`;
+        idx++;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Render ambiguous entries
+  if (parsed.ambiguous.length > 0) {
+    const DAY_SHORT_IMP = ['M','T','W','Th','F'];
+    for (const amb of parsed.ambiguous) {
+      const childName = CHILDREN[amb.child]?.name || amb.child;
+      html += `<div class="import-ambiguous">`;
+      html += `<div class="import-ambiguous-header">
+        <span>${amb.originalName || 'Unknown'}</span>
+        <span class="ir-status ${amb.status}">${amb.status}</span>
+        <span style="color:#718096;font-size:10px;">${childName} · Week ${amb.week}</span>
+      </div>`;
+      html += `<div class="import-ambiguous-reason">${amb.reason || 'Multiple options — pick the one(s) you signed up for:'}</div>`;
+
+      for (const optId of amb.options) {
+        const cls = CLASSES.find(c => c.id === optId);
+        if (!cls) continue;
+        let displayName = cls.name;
+        if (!cls.name.match(/\(\d+-\d+\)|\(\d+\+\)/)) {
+          const ageStr = cls.ageMax >= 99 ? `${cls.ageMin}+` : (cls.ageMin === cls.ageMax ? `${cls.ageMin}` : `${cls.ageMin}-${cls.ageMax}`);
+          displayName += ` (${ageStr})`;
+        }
+        let schedLines = [];
+        const specials = SPECIAL_TIMES[cls.id];
+        if (!specials) {
+          const daysStr = cls.days.map(d => DAY_SHORT_IMP[d]).join(',');
+          const timeRange = cls.startTime >= 0 ? `${timeStr(cls.startTime)}-${timeStr(cls.endTime)}` : (cls.notes || 'Varies');
+          schedLines.push(`${daysStr} ${timeRange}`);
+        } else {
+          const timeGroups = {};
+          for (const day of cls.days) {
+            const times = getClassTimes(cls, day);
+            const key = `${times.start}-${times.end}`;
+            if (!timeGroups[key]) timeGroups[key] = { start: times.start, end: times.end, days: [] };
+            timeGroups[key].days.push(day);
+          }
+          for (const g of Object.values(timeGroups)) {
+            schedLines.push(`${g.days.map(d => DAY_SHORT_IMP[d]).join(',')} ${timeStr(g.start)}-${timeStr(g.end)}`);
+          }
+        }
+        html += `<div class="import-row">
+          <input type="checkbox" id="imp-${idx}" data-child="${amb.child}" data-week="${amb.week}" data-classid="${cls.id}" data-status="${amb.status}">
+          <div class="ir-details">
+            <div class="ir-line1"><span class="ir-name">${displayName}</span></div>
+            ${schedLines.map(line => `<div class="ir-schedule">${line}</div>`).join('')}
+          </div>
+        </div>`;
+        idx++;
+      }
+      html += `</div>`;
+    }
+  }
+
+  html += `<div class="import-actions">
+    <button class="import-cancel-btn" onclick="document.getElementById('aiSuggestions').innerHTML='';">Cancel</button>
+    <button class="import-apply-btn" onclick="applyImport()">Apply Selected</button>
+  </div>`;
+  html += '</div>';
+
+  document.getElementById('aiSuggestions').innerHTML = html;
+  window._importData = parsed.imports;
+}
+
+function applyImport() {
+  // Reset all schedules before importing
+  for (const child of Object.keys(CHILDREN)) {
+    for (const week of [5,6,7,8]) {
+      schedule[child][week] = [];
+      waitlist[child][week] = [];
+    }
+  }
+
+  const checkboxes = document.querySelectorAll('.import-row input[type=checkbox]:checked');
+  let applied = 0;
+
+  for (const cb of checkboxes) {
+    const childKey = cb.dataset.child;
+    const week = parseInt(cb.dataset.week);
+    const classId = cb.dataset.classid;
+    const status = cb.dataset.status;
+
+    const sched = schedule[childKey][week];
+    const wait = waitlist[childKey][week];
+
+    // Skip if already present
+    if (sched.includes(classId) || wait.includes(classId)) continue;
+
+    if (status === 'confirmed') {
+      sched.push(classId);
+    } else {
+      wait.push(classId);
+    }
+    applied++;
+  }
+
+  saveState();
+  render();
+
+  document.getElementById('aiSuggestions').innerHTML = '';
+  addAiMessage('assistant', `Import complete! Applied ${applied} class${applied !== 1 ? 'es' : ''} across all children and weeks.`);
+}
+
+// ============================================================
+// INIT — load family, build UI, load schedule, render
+// ============================================================
+async function handleLogout() {
+  await fetch('/api/auth/signout', { method: 'POST' });
+  window.location.href = '/login';
+}
+
+async function initApp() {
+  // 1. Fetch family config
+  let familyData;
+  try {
+    const res = await fetch('/api/family');
+    if (res.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+    familyData = await res.json();
+  } catch (err) {
+    document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#718096;">Failed to load. <a href="/login">Sign in</a></div>';
+    return;
+  }
+
+  // 2. Check if family is set up
+  if (!familyData.children || familyData.children.length === 0) {
+    window.location.href = '/kbiacal/setup';
+    return;
+  }
+
+  // 3. Build CHILDREN object from family data
+  for (const child of familyData.children) {
+    const key = child.name.toLowerCase();
+    CHILDREN[key] = { name: child.name, age: child.age, color: child.color };
+  }
+  currentChild = Object.keys(CHILDREN)[0];
+
+  // 4. Initialize schedule/waitlist objects
+  for (const child of Object.keys(CHILDREN)) {
+    schedule[child] = { 5: [], 6: [], 7: [], 8: [] };
+    waitlist[child] = { 5: [], 6: [], 7: [], 8: [] };
+  }
+
+  // 5. Inject dynamic child-specific CSS
+  const styleEl = document.createElement('style');
+  const childCount = Object.keys(CHILDREN).length;
+  let css = `.all-kids-view { grid-template-columns: repeat(${childCount}, 1fr); }\n`;
+  for (const [key, child] of Object.entries(CHILDREN)) {
+    css += `.child-tab[data-child="${key}"] { border-color: ${child.color}; }\n`;
+    css += `.child-tab[data-child="${key}"].active { background: ${child.color}; }\n`;
+    css += `.kid-column[data-child="${key}"] h3 { border-color: ${child.color}; color: ${child.color}; }\n`;
+  }
+  styleEl.textContent = css;
+  document.head.appendChild(styleEl);
+
+  // 6. Generate child tabs
+  const tabContainer = document.getElementById('childTabs');
+  tabContainer.innerHTML = Object.entries(CHILDREN).map(([key, child], i) =>
+    `<div class="child-tab${i === 0 ? ' active' : ''}" data-child="${key}">${child.name} (${child.age})</div>`
+  ).join('');
+
+  // 7. Generate cost bar items
+  const costBar = document.getElementById('costBar');
+  const totalEl = costBar.querySelector('.cost-item.total');
+  for (const [key, child] of Object.entries(CHILDREN)) {
+    const item = document.createElement('div');
+    item.className = 'cost-item';
+    item.innerHTML = `<span>${child.name}:</span> <span class="amount" id="cost-${key}">$0</span>`;
+    costBar.insertBefore(item, totalEl);
+  }
+
+  // 8. Load schedule from server (or localStorage fallback)
+  await loadState();
+
+  // 9. Render
+  render();
+}
+
+initApp();
+</script>
+</body>
+</html>

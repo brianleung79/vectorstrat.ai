@@ -2213,7 +2213,7 @@ function applyImport() {
 // ============================================================
 async function handleLogout() {
   await fetch('/api/auth/signout', { method: 'POST' });
-  window.location.href = '/login';
+  window.location.href = '/kbiacal/login';
 }
 
 async function initApp() {
@@ -2222,7 +2222,7 @@ async function initApp() {
   try {
     const res = await fetch('/api/family');
     if (res.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/kbiacal/login';
       return;
     }
     familyData = await res.json();

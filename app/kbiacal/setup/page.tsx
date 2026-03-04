@@ -91,46 +91,46 @@ export default function SetupPage() {
   }
 
   async function handleLogout() {
-    await createClient().auth.signOut()
+    await fetch('/api/auth/signout', { method: 'POST' })
     router.push('/kbiacal/login')
     router.refresh()
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <p className="text-gray-400">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0f2438, #1a3a5c)' }}>
+        <p className="text-slate-400">Loading...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'linear-gradient(135deg, #0f2438, #1a3a5c)' }}>
       <div className="w-full max-w-lg">
         <div className="flex justify-between items-center mb-8">
           <Link
             href="/kbiacal"
-            className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
+            className="text-slate-400 hover:text-slate-200 text-sm transition-colors"
           >
             &larr; Back to scheduler
           </Link>
           <button
             onClick={handleLogout}
-            className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
+            className="text-slate-400 hover:text-slate-200 text-sm transition-colors"
           >
             Sign out
           </button>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-xl">
-          <h1 className="text-2xl font-bold text-gray-100 mb-2">Family Setup</h1>
-          <p className="text-gray-400 text-sm mb-6">
+        <div className="rounded-2xl p-8 shadow-xl" style={{ background: 'rgba(26, 58, 92, 0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <h1 className="text-2xl font-bold text-white mb-2">Family Setup</h1>
+          <p className="text-slate-300 text-sm mb-6" style={{ opacity: 0.7 }}>
             Add your children to start scheduling KBIA classes.
           </p>
 
           <div className="space-y-4 mb-6">
             {children.map((child, i) => (
-              <div key={i} className="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3">
+              <div key={i} className="flex items-center gap-3 rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
                 <input
                   type="color"
                   value={child.color}
@@ -143,7 +143,10 @@ export default function SetupPage() {
                   value={child.name}
                   onChange={(e) => updateChild(i, 'name', e.target.value)}
                   placeholder="Name"
-                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-colors text-sm"
+                  className="flex-1 px-3 py-2 rounded-lg text-white placeholder-slate-400 focus:outline-none transition-colors text-sm"
+                  style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}
+                  onFocus={(e) => { e.target.style.boxShadow = '0 0 0 2px rgba(79,209,197,0.4)'; e.target.style.borderColor = '#4fd1c5' }}
+                  onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'rgba(255,255,255,0.2)' }}
                 />
                 <input
                   type="number"
@@ -151,12 +154,15 @@ export default function SetupPage() {
                   onChange={(e) => updateChild(i, 'age', parseInt(e.target.value) || 0)}
                   min={1}
                   max={18}
-                  className="w-16 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-colors text-sm text-center"
+                  className="w-16 px-3 py-2 rounded-lg text-white focus:outline-none transition-colors text-sm text-center"
+                  style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}
+                  onFocus={(e) => { e.target.style.boxShadow = '0 0 0 2px rgba(79,209,197,0.4)'; e.target.style.borderColor = '#4fd1c5' }}
+                  onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'rgba(255,255,255,0.2)' }}
                   title="Age"
                 />
                 <button
                   onClick={() => removeChild(i)}
-                  className="text-gray-500 hover:text-red-400 transition-colors p-1"
+                  className="text-slate-400 hover:text-red-400 transition-colors p-1"
                   title="Remove"
                 >
                   &#10005;
@@ -167,13 +173,16 @@ export default function SetupPage() {
 
           <button
             onClick={addChild}
-            className="w-full py-2 px-4 border border-dashed border-gray-700 rounded-lg text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-colors text-sm mb-6"
+            className="w-full py-2 px-4 rounded-lg text-slate-300 hover:text-white transition-colors text-sm mb-6"
+            style={{ border: '1px dashed rgba(255,255,255,0.2)' }}
+            onMouseOver={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)' }}
+            onMouseOut={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
           >
             + Add child
           </button>
 
           {error && (
-            <p className="text-red-400 text-sm bg-red-900/20 border border-red-800/30 rounded-lg px-3 py-2 mb-4">
+            <p className="text-red-300 text-sm rounded-lg px-3 py-2 mb-4" style={{ background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.25)' }}>
               {error}
             </p>
           )}
@@ -181,7 +190,10 @@ export default function SetupPage() {
           <button
             onClick={handleSave}
             disabled={saving || children.length === 0}
-            className="w-full py-2.5 px-4 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 px-4 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: 'linear-gradient(135deg, #2a5a8c, #4fd1c5)' }}
+            onMouseOver={(e) => { if (!saving && children.length > 0) e.currentTarget.style.background = 'linear-gradient(135deg, #3470a5, #5ee0ce)' }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, #2a5a8c, #4fd1c5)' }}
           >
             {saving ? 'Saving...' : 'Save & Continue'}
           </button>

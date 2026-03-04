@@ -1843,7 +1843,8 @@ async function parseImportWithAi(csvText) {
     return `${c.id} | "${c.name}" | ${c.category} | ages ${ages} | wks ${wks} | ${days} ${time}`;
   }).join('\n');
 
-  const systemPrompt = `You are a data parser for a KBIA summer camp scheduling app. Your job is to read a spreadsheet export and match each class entry to the correct class ID from the app's database.
+  const childKeys = Object.keys(CHILDREN);
+  const systemPrompt = `You are a smart data parser for a KBIA summer camp scheduling app. You receive raw file content (CSV, TSV, or freeform text) and your job is to figure out what classes are listed and match them to the app's class database. Be flexible — files come in many formats.
 
 ## CHILDREN
 ${Object.entries(CHILDREN).map(([k,v]) => `- ${k}: age ${v.age}`).join('\n')}
@@ -1857,94 +1858,77 @@ ${Object.entries(CHILDREN).map(([k,v]) => `- ${k}: age ${v.age}`).join('\n')}
 ## CLASS DATABASE (id | name | category | ages | weeks | schedule)
 ${classRef}
 
-## YOUR TASK — FOLLOW THESE STEPS IN EXACT ORDER
-For each class entry in the spreadsheet:
+## YOUR TASK
+Read the file content and do your best to understand what's in it. The file could be:
+- A structured CSV/TSV with headers
+- A registration confirmation email
+- A hand-typed list of classes
+- Any other format
 
-**STEP 1 (MANDATORY FIRST): CHECK FOR MARK — this is the gatekeeper.**
-Look at the mark/status column for this entry. There are ONLY three possibilities:
-- "X" or "x" → status is "confirmed" → proceed to step 2
-- "W" or "w" → status is "waitlisted" → proceed to step 2
-- ANYTHING ELSE (blank, empty, no letter, just whitespace, "BACKUP", any other text) → **SKIP THIS ENTRY ENTIRELY. Do NOT include it in "imports" OR "ambiguous". Do NOT try to match it. Move to the next entry.**
+### Step 1: Understand the format
+Figure out what columns or fields exist. Look for child names, class names, weeks, days, times, and any status indicators. Don't assume any particular column structure — adapt to what's there.
 
-**STEP 2: Identify child and week**
-- Which child (caroline, max, jack) and which week (5, 6, 7, 8)
+### Step 2: Determine status
+- If there's a mark/status column with "X"/"x" → confirmed, "W"/"w" → waitlisted
+- If entries have marks and some are blank/other → skip the unmarked ones (they're not enrolled)
+- If there is NO status column at all → treat ALL entries as "confirmed" (the user uploaded their enrollment list)
 
-**STEP 3: Match to database — confident, expand, or ambiguous**
-Cross-reference against the CLASS DATABASE to find the correct classId(s). Classify each entry:
+### Step 3: Identify child and week
+- Match child names to: ${childKeys.map(k => `"${k}"`).join(', ')} (case-insensitive, use lowercase in output)
+- Determine which week (5-8) from dates, week numbers, or context
+- If only one child exists in the system, assume all entries are for that child
 
-**CONFIDENT match** → put in "imports" array. Use when there is ONE clear match, OR when a single entry clearly covers a combined time block that maps to multiple classes the user definitely signed up for together.
-- Example: "Water Polo MWF 5-6pm" → EXPAND to water-polo-5 AND water-polo-530 (these are two halves of the same session, user signed up for both)
+### Step 4: Match to class database
+For each entry, search the CLASS DATABASE and find the best match. Be creative — the file may use informal names, abbreviations, or different terminology.
 
-**AMBIGUOUS match** → put in "ambiguous" array. Use ONLY when the entry HAS a mark (X/x/W/w) AND could refer to multiple DISTINCT class options. If the entry has NO mark, it goes NOWHERE — not in imports, not in ambiguous. Skip it.
-- Example: "Surfing" → could be surf-tu, surf-w, surf-th, or surf-f (each is a separate class on a different day — you don't know which day(s) the user picked)
-- Example: "Sea Fleas" → could be session A or session B
+**CONFIDENT match** → put in "imports" array
+- If a time range spans multiple database classes, expand into separate entries
+- Example: "Water Polo MWF 5-6pm" → water-polo-5 AND water-polo-530
 
-Always verify age-eligibility and week availability for each option.
+**AMBIGUOUS match** → put in "ambiguous" array (multiple distinct options, can't tell which)
+- Example: "Surfing" without a day specified → could be surf-tu, surf-w, surf-th, or surf-f
 
-## REASONING REQUIREMENT
-For EVERY entry with a mark, you MUST reason carefully before matching. Do NOT just pattern-match on the name — actually think it through:
+**No match** → skip and mention in the message
 
-1. **Search the database broadly.** The spreadsheet name may be informal, abbreviated, a nickname, or use different terminology than the database. Consider synonyms, abbreviations, acronyms, and related terms. A name might refer to an activity, a venue, a team, or an event — think about what it could mean in a summer camp context and find the best match in the database.
-2. **Verify week availability.** After finding a candidate match, CHECK that the class is actually offered in the specified week. If it is NOT, ask yourself: what class in the same category or time slot IS available that week? The user likely means that one instead.
-3. **Compare time ranges and expand.** Compare the spreadsheet's time range against the matched class time(s). If the spreadsheet shows a wider time range than any single class, look for multiple classes that together cover that range. Output each as a separate entry.
-4. **Verify age eligibility.** Confirm the child meets the age requirement.
-
-The user's spreadsheet is their personal tracking sheet — names will NOT always match the database exactly. Your job is to figure out what they actually mean by searching the database and reasoning about context.
-
-## MATCHING RULES
+### Matching guidance
+- Search broadly: names may be informal, abbreviated, or use nicknames
+- Verify week availability: check the class is offered in that week
+- Compare time ranges: if the file shows a wider range than one class, look for multiple classes covering it
+- Verify age eligibility for the child
 - "Sports Bundle" wks 5-7 → sports-bundle-567, wk 8 → sports-bundle-8
-- "Tennis Match Play" → tennis-match
-- "Tennis Game Play" → tennis-gp
-- "Tennis" with time 12:00-12:30 for ages 4-6 → tennis-sd-46-12; for ages 7-10 → tennis-sd-710-12
-- "Tennis" with time 12:30-1:00 for ages 4-6 → tennis-sd-46-1230; for ages 7-10 → tennis-sd-710-1230
-- "Tennis" with time 2:00-2:30 for ages 4-6 → tennis-sd-46-2; for ages 7-10 → tennis-sd-710-2
-- "Starfish 4-5" → starfish
-- "Bundle" / "Bundle Swimming" → match to the correct bundle based on the child's age (e.g., age 5-6 → am-swim-56, age 7-8 → am-swim-78, age 9-10 → am-swim-910)
-- "CIT Age 13" → cit-13
-- "CIT Tennis" → cit-tennis
-- "CIT SUP" / "CIT Paddle" / "CIT Paddleboard" → cit-paddle-{week}
+- "Tennis Match Play" → tennis-match; "Tennis Game Play" → tennis-gp
+- "CIT" with age 13 → cit-13; age 14 → cit-14
+- "CIT SUP/Paddle/Paddleboard" → cit-paddle-{week}
 - "Tween Sailing" → tween-sail-{week}
-- "Sea Fleas" → seaflea-{week}a (default session A)
-- "Titles Tidepool" / "Titles and Tidepools" → tidepools
-- "Creative Arts 4-5" / "Creative Arts" for ages 4-5 → artexplore-45
-- "Creative Arts" MWF for ages 5-6 → creart-56; ages 9-10 → creart-910; etc.
-- "Fishing" → fish-{week}
-- "Ocean Explorers" → Check database for ocean-{week}a (Mon slot) and ocean-{week}b (Tue slot). Available wks 5-8.
-- "Water Polo" → check database for all water polo classes and their times; expand if needed
-- "Swim Team" → swim-team
-- "Teen Night" → teen-night
-- "Sea Dogs" / "Sea Dogs Game" → search the database, check week availability, and reason about what the user actually means
-- "Surfing" → AMBIGUOUS: offered as separate day classes (surf-tu, surf-w, surf-th, surf-f). Put in ambiguous array.
-- "Basketball Camp" — not in our database, skip and note in message
-- "SMFC Keepers/Strikers" — not in our database, skip and note in message
+- "Ocean Explorers" → ocean-{week}a (Mon) or ocean-{week}b (Tue)
+- "Surfing" without day → AMBIGUOUS (surf-tu, surf-w, surf-th, surf-f)
+- "Sea Fleas" without session → AMBIGUOUS (session A vs B)
 
 ## RESPONSE FORMAT
 Return ONLY valid JSON (no markdown fences):
 {
   "message": "Summary of what was imported and any issues found",
   "imports": [
-    { "child": "caroline", "week": 5, "classId": "water-polo-5", "status": "waitlisted", "originalName": "Water Polo 5-6pm (1 of 2)" },
-    { "child": "caroline", "week": 5, "classId": "water-polo-530", "status": "waitlisted", "originalName": "Water Polo 5-6pm (2 of 2)" }
+    { "child": "caroline", "week": 5, "classId": "water-polo-5", "status": "confirmed", "originalName": "Water Polo 5-6pm (1 of 2)" }
   ],
   "ambiguous": [
     {
       "child": "caroline", "week": 5, "status": "confirmed",
       "originalName": "Surfing 10-11:30",
-      "reason": "Surfing is offered as separate day classes. Which day(s) did you sign up for?",
+      "reason": "Surfing is offered on different days. Which day(s)?",
       "options": ["surf-tu", "surf-w", "surf-th", "surf-f"]
     }
   ]
 }
 
 Rules:
-- **MOST IMPORTANT RULE: If an entry has NO "X", "x", "W", or "w" mark, it MUST be excluded from BOTH "imports" AND "ambiguous". Zero tolerance. No mark = not signed up = skip completely. This applies even if the class name appears interesting or matchable.**
 - Use EXACT classId values from the database. Double-check each one exists.
-- When one spreadsheet entry maps to multiple database classes that are clearly part of a SINGLE combined session, create a separate import entry for EACH in "imports", and note "(1 of N)", "(2 of N)" etc in originalName.
-- When one entry could refer to multiple DISTINCT options (different days, different sessions), put it in "ambiguous" with ALL valid options listed. Do NOT guess — let the user pick.
-- child must be one of: ${Object.keys(CHILDREN).map(k => `"${k}"`).join(', ')} (lowercase).
-- week must be 5, 6, 7, or 8.
-- In the message, mention any entries you skipped (no mark) and any you couldn't match.
-- Include originalName showing what the spreadsheet said, for user review.`;
+- When one entry maps to multiple classes in a combined session, create separate import entries and note "(1 of N)", "(2 of N)" in originalName.
+- When one entry could refer to multiple distinct options, put in "ambiguous" with all valid options.
+- child must be one of: ${childKeys.map(k => `"${k}"`).join(', ')} (lowercase).
+- week must be a number: 5, 6, 7, or 8.
+- In the message, mention any entries you couldn't match.
+- Include originalName showing what the file said, for user review.`;
 
   try {
     const response = await fetch('/api/ai', {

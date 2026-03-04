@@ -4,7 +4,7 @@ import { checkRateLimit, checkCsrf } from '@/lib/security'
 
 const ALLOWED_MODEL = 'claude-sonnet-4-6'
 const MAX_TOKENS = 16000
-const MAX_SYSTEM_LENGTH = 10000
+const MAX_SYSTEM_LENGTH = 50000
 const MAX_MESSAGES = 50
 
 function validateMessages(messages: unknown): messages is Array<{ role: string; content: string }> {

@@ -47,7 +47,9 @@ export async function updateSession(request: NextRequest) {
 
   // Redirect authenticated users away from /kbiacal/login to /kbiacal
   if (user && request.nextUrl.pathname === '/kbiacal/login') {
-    const redirectTo = request.nextUrl.searchParams.get('redirectTo') || '/kbiacal'
+    const rawRedirect = request.nextUrl.searchParams.get('redirectTo') || '/kbiacal'
+    // Validate redirectTo to prevent open redirect attacks
+    const redirectTo = rawRedirect.startsWith('/kbiacal') ? rawRedirect : '/kbiacal'
     const url = request.nextUrl.clone()
     url.pathname = redirectTo
     url.searchParams.delete('redirectTo')

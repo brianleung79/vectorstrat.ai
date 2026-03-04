@@ -14,7 +14,8 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirectTo') || '/kbiacal'
+  const rawRedirect = searchParams.get('redirectTo') || '/kbiacal'
+  const redirectTo = rawRedirect.startsWith('/kbiacal') ? rawRedirect : '/kbiacal'
 
   const supabase = createClient()
 

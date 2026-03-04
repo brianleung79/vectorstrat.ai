@@ -429,7 +429,7 @@ const CLASSES = [
   { id: 'sculpt-45', name: 'Sculpture (4-5)', category: 'art', ageMin: 4, ageMax: 5, weeks: [5,6,7,8], days: [1,3], startTime: 14, endTime: 15, fee: 72 },
   { id: 'sculpt-11p', name: 'Sculpture (11+)', category: 'art', ageMin: 11, ageMax: 99, weeks: [5,6,7,8], days: [1,3], startTime: 15, endTime: 16, fee: 72 },
   { id: 'bead-jewel', name: 'Beading Jewelry (7+)', category: 'art', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [2,4], startTime: 13, endTime: 14, fee: 71 },
-  { id: 'textile-jewel', name: 'Textile Jewelry (8+)', category: 'art', ageMin: 8, ageMax: 99, weeks: [5,6,7,8], days: [2,4], startTime: 14, endTime: 15, fee: 71 },
+  { id: 'textile-jewel', name: 'Textile Jewelry (7+)', category: 'art', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [2,4], startTime: 14, endTime: 15, fee: 71 },
   { id: 'leather-m', name: 'Leathercrafts (M)', category: 'art', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [0], startTime: 8, endTime: 9.5, fee: 57 },
   { id: 'leather-w', name: 'Leathercrafts (W)', category: 'art', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [2], startTime: 8, endTime: 9.5, fee: 57 },
   { id: 'leather-f', name: 'Leathercrafts (F)', category: 'art', ageMin: 7, ageMax: 99, weeks: [5,6,7,8], days: [4], startTime: 8, endTime: 9.5, fee: 57 },
@@ -448,12 +448,11 @@ const CLASSES = [
   { id: 'comic-7', name: 'Comic Book Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [7], days: [1,3], startTime: 9, endTime: 11, fee: 110 },
   { id: 'recycle-7', name: 'Recycle Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [7], days: [1,3], startTime: 11, endTime: 12, fee: 55 },
   { id: 'mixed-7', name: 'Mixed Media', category: 'art', ageMin: 9, ageMax: 99, weeks: [7], days: [1,3], startTime: 12, endTime: 13, fee: 55 },
-  { id: 'print-7', name: 'Printmaking', category: 'art', ageMin: 9, ageMax: 99, weeks: [7], days: [1,3], startTime: 13, endTime: 14, fee: 55 },
-  { id: 'fashion-7', name: 'Fashion Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [7], days: [1,3], startTime: 14, endTime: 15, fee: 55 },
+  { id: 'mural-7', name: 'Mural/Community Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [7], days: [1,3], startTime: 13, endTime: 14, fee: 55 },
   { id: 'comic-8', name: 'Comic Book Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 9, endTime: 11, fee: 110 },
-  { id: 'mural-8', name: 'Mural/Community Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 11, endTime: 12, fee: 55 },
-  { id: 'recycle-8', name: 'Recycle Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 12, endTime: 13, fee: 55 },
-  { id: 'mixed-8', name: 'Mixed Media', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 13, endTime: 14, fee: 55 },
+  { id: 'mixed-8', name: 'Mixed Media', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 11, endTime: 12, fee: 55 },
+  { id: 'mural-8', name: 'Mural/Community Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 12, endTime: 13, fee: 55 },
+  { id: 'recycle-8', name: 'Recycle Art', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 13, endTime: 14, fee: 55 },
   { id: 'fashion-8', name: 'Fashion Design', category: 'art', ageMin: 9, ageMax: 99, weeks: [8], days: [1,3], startTime: 14, endTime: 15, fee: 55 },
 
   // === WOODWORKING ===
@@ -553,7 +552,12 @@ const CLASSES = [
   { id: 'topsail-7', name: 'Topsails/Laser (TuWTh)', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [7], days: [1,2,3], startTime: 16, endTime: 18.5, fee: 284 },
   { id: 'topsail-8', name: 'Topsails/Laser (MTuW)', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [8], days: [0,1,2], startTime: 8, endTime: 10.5, fee: 284 },
 
-  // Gollywobblers (7-8) - NOT eligible for any of your kids
+  // Gollywobblers (7-8) — Optimist sailboats, intro to sailing
+  { id: 'golly-5', name: 'Gollywobblers', category: 'sailing', ageMin: 7, ageMax: 8, weeks: [5], days: [0,1,2,3], startTime: -1, endTime: -1, fee: 106, notes: 'MTuW 3-3:45, Th 4:30-6 PM' },
+  { id: 'golly-6', name: 'Gollywobblers', category: 'sailing', ageMin: 7, ageMax: 8, weeks: [6], days: [0,1,2,3], startTime: 10, endTime: 11.5, fee: 106, notes: 'MTuW 10-10:45, Th 10-11:30' },
+  { id: 'golly-7', name: 'Gollywobblers', category: 'sailing', ageMin: 7, ageMax: 8, weeks: [7], days: [0,1,2,3], startTime: 14, endTime: 15.5, fee: 106, notes: 'MTuW 2-2:45, Th 2-3:30' },
+  { id: 'golly-8', name: 'Gollywobblers', category: 'sailing', ageMin: 7, ageMax: 8, weeks: [8], days: [0,1,2,3], startTime: -1, endTime: -1, fee: 106, notes: 'MTuW 9-9:45, Th 10-11:30' },
+
   // Tween Sailing (11+)
   { id: 'tween-sail-5', name: 'Tween Sailing', category: 'sailing', ageMin: 11, ageMax: 99, weeks: [5], days: [2,3], startTime: -1, endTime: -1, fee: 160, notes: 'W 4-6 PM, Th 8-10 AM' },
   { id: 'tween-sail-6', name: 'Tween Sailing', category: 'sailing', ageMin: 11, ageMax: 99, weeks: [6], days: [0,1], startTime: 10, endTime: 12, fee: 160, notes: 'MTu 10 AM-12 PM' },
@@ -566,9 +570,11 @@ const CLASSES = [
   { id: 'race-7', name: 'Race Team', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [7], days: [0,3,4], startTime: -1, endTime: -1, fee: 327, notes: 'M 1-4 PM, ThF 3-6 PM' },
   { id: 'race-8', name: 'Race Team', category: 'sailing', ageMin: 9, ageMax: 99, weeks: [8], days: [0,1,3], startTime: -1, endTime: -1, fee: 327, notes: 'MTu 8-11 AM, Th 10 AM-1 PM' },
 
-  // Cruisin with a Crew (11+)
-  { id: 'cruise-5', name: "Cruisin' with a Crew", category: 'sailing', ageMin: 11, ageMax: 99, weeks: [5], days: [2,3], startTime: 17, endTime: 19, fee: 160, notes: 'WTh 5-7 PM' },
-  { id: 'cruise-7', name: "Cruisin' with a Crew", category: 'sailing', ageMin: 11, ageMax: 99, weeks: [7], days: [2,3], startTime: 17, endTime: 19, fee: 160, notes: 'WTh 5-7 PM' },
+  // Cruisin' with a Crew (11+) — single-day coastal cruise on Precision sloops
+  { id: 'cruise-5', name: "Cruisin' with a Crew", category: 'sailing', ageMin: 11, ageMax: 99, weeks: [5], days: [0], startTime: 14, endTime: 16, fee: 85, notes: 'July 20 M 2-4 PM' },
+  { id: 'cruise-6', name: "Cruisin' with a Crew", category: 'sailing', ageMin: 11, ageMax: 99, weeks: [6], days: [3], startTime: 10, endTime: 12, fee: 85, notes: 'July 30 Th 10 AM-12 PM' },
+  { id: 'cruise-7', name: "Cruisin' with a Crew", category: 'sailing', ageMin: 11, ageMax: 99, weeks: [7], days: [0], startTime: 15, endTime: 17, fee: 85, notes: 'Aug 3 M 3-5 PM' },
+  { id: 'cruise-8', name: "Cruisin' with a Crew", category: 'sailing', ageMin: 11, ageMax: 99, weeks: [8], days: [4], startTime: 11, endTime: 13, fee: 85, notes: 'Aug 14 F 11 AM-1 PM' },
 
   // === POWERBOATING ===
   { id: 'pwrsq-5', name: 'Power Squadron', category: 'boating', ageMin: 11, ageMax: 99, weeks: [5], days: [0,1,2], startTime: 16, endTime: 18, fee: 237, notes: 'MTuW 4-6 PM' },
@@ -579,18 +585,22 @@ const CLASSES = [
   // Fishing (9+)
   { id: 'fish-5', name: 'Fishing', category: 'boating', ageMin: 9, ageMax: 99, weeks: [5], days: [2,4], startTime: -1, endTime: -1, fee: 125, notes: 'W 4-6 PM, F 8-10 AM' },
   { id: 'fish-6', name: 'Fishing', category: 'boating', ageMin: 9, ageMax: 99, weeks: [6], days: [3,4], startTime: -1, endTime: -1, fee: 125, notes: 'Th/F 11AM-1PM or 1-3PM' },
-  { id: 'fish-7', name: 'Fishing', category: 'boating', ageMin: 9, ageMax: 99, weeks: [7], days: [2,3,4], startTime: -1, endTime: -1, fee: 125, notes: 'W 2-6, Th 3-5, F 4-6 PM' },
-  { id: 'fish-8', name: 'Fishing', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [2,3,4], startTime: -1, endTime: -1, fee: 125, notes: 'W-F, various times' },
+  { id: 'fish-7', name: 'Fishing', category: 'boating', ageMin: 9, ageMax: 99, weeks: [7], days: [2,3,4], startTime: -1, endTime: -1, fee: 125, notes: 'W 2-4/4-6, Th 3-5, F 4-6 PM' },
+  { id: 'fish-8', name: 'Fishing', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [2,3,4], startTime: -1, endTime: -1, fee: 125, notes: 'W 9-11/11-1, Th 10-12/12-2, F 11-1/1-3' },
 
-  // Island Picnic (9+)
-  { id: 'picnic-5', name: 'Island Picnic at Sea', category: 'boating', ageMin: 9, ageMax: 99, weeks: [5], days: [0,1], startTime: 15, endTime: 17, fee: 125, notes: 'M/Tu 3-5 PM' },
-  { id: 'picnic-6', name: 'Island Picnic at Sea', category: 'boating', ageMin: 9, ageMax: 99, weeks: [6], days: [0,1], startTime: 9, endTime: 13, fee: 125, notes: 'M/Tu 9-1 PM (varies)' },
-  { id: 'picnic-7', name: 'Island Picnic at Sea', category: 'boating', ageMin: 9, ageMax: 99, weeks: [7], days: [0,1], startTime: 13, endTime: 17, fee: 125, notes: 'M 1-5, Tu 2-6 PM (varies)' },
-  { id: 'picnic-8', name: 'Island Picnic at Sea', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [0,1], startTime: 8, endTime: 12, fee: 125, notes: 'M/Tu 8-12 PM (varies)' },
+  // Island Picnic at Sea (9+) — boat trip to Goat Island Lighthouse
+  { id: 'picnic-6', name: 'Island Picnic at Sea', category: 'boating', ageMin: 9, ageMax: 99, weeks: [6], days: [2], startTime: 10, endTime: 13, fee: 156, notes: 'July 29 W 10 AM-1 PM' },
+  { id: 'picnic-8', name: 'Island Picnic at Sea', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [2], startTime: 11, endTime: 14, fee: 156, notes: 'Aug 12 W 11 AM-2 PM' },
 
-  // Ocean Explorers (9+)
-  { id: 'ocean-6', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [6], days: [2], startTime: 10, endTime: 13, fee: 156, notes: 'July 29, W 10 AM-1 PM' },
-  { id: 'ocean-8', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [2], startTime: 11, endTime: 14, fee: 156, notes: 'Aug 12, W 11 AM-2 PM' },
+  // Ocean Explorers (9+) — lobster traps, seals, coastal excursion
+  { id: 'ocean-5a', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [5], days: [0], startTime: 15, endTime: 17, fee: 125, notes: 'July 20 M 3-5 PM' },
+  { id: 'ocean-5b', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [5], days: [1], startTime: 15, endTime: 17, fee: 125, notes: 'July 21 Tu 3-5 PM' },
+  { id: 'ocean-6a', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [6], days: [0], startTime: -1, endTime: -1, fee: 125, notes: 'July 27 M 9-11 AM or 11 AM-1 PM' },
+  { id: 'ocean-6b', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [6], days: [1], startTime: -1, endTime: -1, fee: 125, notes: 'July 28 Tu 9:30-11:30 or 11:30-1:30' },
+  { id: 'ocean-7a', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [7], days: [0], startTime: -1, endTime: -1, fee: 125, notes: 'Aug 3 M 1-3 or 3-5 PM' },
+  { id: 'ocean-7b', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [7], days: [1], startTime: -1, endTime: -1, fee: 125, notes: 'Aug 4 Tu 2-4 or 4-6 PM' },
+  { id: 'ocean-8a', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [0], startTime: -1, endTime: -1, fee: 125, notes: 'Aug 10 M 8-10 or 10-12' },
+  { id: 'ocean-8b', name: 'Ocean Explorers', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [1], startTime: -1, endTime: -1, fee: 125, notes: 'Aug 11 Tu 8-10 or 10-12' },
 
   // === SEA FLEAS (4-6) ===
   { id: 'seaflea-5a', name: 'Sea Fleas Session A', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [5], days: [0,1,2,3], startTime: -1, endTime: -1, fee: 106, notes: 'MTuW 3-3:45, Th 4:30-6' },
@@ -601,6 +611,10 @@ const CLASSES = [
   { id: 'seaflea-7b', name: 'Sea Fleas Session B', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [7], days: [0,1,2,3], startTime: 15, endTime: 17.25, fee: 106, notes: 'MTuW 3-3:45, Th 3:45-5:15' },
   { id: 'seaflea-8a', name: 'Sea Fleas Session A', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [8], days: [0,1,2,3], startTime: 9, endTime: 11.5, fee: 106, notes: 'MTuW 9-9:45, Th 10-11:30' },
   { id: 'seaflea-8b', name: 'Sea Fleas Session B', category: 'sailing', ageMin: 4, ageMax: 6, weeks: [8], days: [0,1,2,3], startTime: 10, endTime: 13.25, fee: 106, notes: 'MTuW 10-10:45, Th 11:45-1:15' },
+
+  // === KAYAK TRIP (9+) ===
+  { id: 'kayak-trip-6', name: 'Kayak Trip', category: 'boating', ageMin: 9, ageMax: 99, weeks: [6], days: [2], startTime: 10, endTime: 13, fee: 106, notes: 'July 29 W 10 AM-1 PM, 3hr guided ocean paddle' },
+  { id: 'kayak-trip-8', name: 'Kayak Trip', category: 'boating', ageMin: 9, ageMax: 99, weeks: [8], days: [2], startTime: 9, endTime: 12, fee: 106, notes: 'Aug 12 W 9 AM-12 PM, 3hr guided ocean paddle' },
 
   // === KAYAKING / SUP ===
   { id: 'kayak-5', name: 'Kayaking', category: 'boating', ageMin: 7, ageMax: 99, weeks: [5], days: [0,1], startTime: 15, endTime: 17, fee: 70, notes: 'MTu 3-4 or 4-5 PM' },
@@ -617,6 +631,7 @@ const CLASSES = [
 
   // === CIT ===
   { id: 'cit-13', name: 'General CIT (13)', category: 'cit', ageMin: 13, ageMax: 13, weeks: [5,6,7,8], days: [0,3], startTime: 9, endTime: 10, fee: 145 },
+  { id: 'cit-14', name: 'General CIT (14)', category: 'cit', ageMin: 14, ageMax: 14, weeks: [5,6,7,8], days: [0,3], startTime: 10, endTime: 11, fee: 145 },
   { id: 'cit-tennis', name: 'CIT Tennis', category: 'cit', ageMin: 13, ageMax: 14, weeks: [5,6,7,8], days: [2], startTime: 14, endTime: 14.5, fee: 22 },
   { id: 'cit-pwrboat-5', name: 'CIT Powerboat', category: 'cit', ageMin: 13, ageMax: 14, weeks: [5], days: [3,4], startTime: 8, endTime: 10, fee: 125, notes: 'July 23-24' },
   { id: 'cit-pwrboat-7', name: 'CIT Powerboat', category: 'cit', ageMin: 13, ageMax: 14, weeks: [7], days: [0,1], startTime: -1, endTime: -1, fee: 125, notes: 'M 1-3, Tu 2-4 PM' },
@@ -627,6 +642,7 @@ const CLASSES = [
   // === EVENING ===
   { id: 'movie-g', name: 'Movie Night (G)', category: 'evening', ageMin: 5, ageMax: 10, weeks: [5,6,7,8], days: [0], startTime: 18, endTime: 20, fee: 14 },
   { id: 'movie-pg', name: 'Movie Night (PG)', category: 'evening', ageMin: 7, ageMax: 12, weeks: [5,6,7,8], days: [2], startTime: 18, endTime: 20, fee: 14 },
+  { id: 'tween-night', name: 'Tween Night', category: 'evening', ageMin: 11, ageMax: 12, weeks: [5,7,8], days: [1], startTime: 18, endTime: 20, fee: 39 },
   { id: 'teen-night', name: 'Teen Night', category: 'evening', ageMin: 13, ageMax: 14, weeks: [5,7,8], days: [3], startTime: 18, endTime: 20, fee: 39 },
   { id: 'seadogs', name: 'Sea Dogs Game', category: 'evening', ageMin: 11, ageMax: 14, weeks: [6], days: [1], startTime: 16.5, endTime: 21.5, fee: 68, notes: 'Wk 6 only, Tu 4:30-9:30 PM' },
 ];
@@ -659,7 +675,7 @@ const CLASS_DESCS = {
   'artexplore': 'Hands-on art introduction for ages 4–5 using simple materials to explore color, texture, and creative expression.',
   'sculpt': '1-hour clay sculpture class. Children explore 3D form through hand-building and creative expression. Meets Tue/Thu.',
   'bead-jewel': 'Create necklaces, bracelets, and wearable art using beads, wire, and basic jewelry-making techniques. Ages 7+.',
-  'textile-jewel': 'Create wearable art using fabric, fiber, and mixed-media techniques. A step up from beading for ages 8+.',
+  'textile-jewel': 'Create wearable art using fabric, fiber, and mixed-media techniques. A step up from beading for ages 7+.',
   'leather': 'Cut, stamp, and stitch leather to create belts, keychains, and wristbands. All materials included. Ages 7+.',
   // Art electives
   'comic': 'Design and illustrate original comic strips and stories. Covers character design, panel composition, speech bubbles, and sequential storytelling. Ages 9+.',
@@ -707,22 +723,26 @@ const CLASS_DESCS = {
   'topsail': 'Learn to sail Topsail dinghies (ages 9–10) or Laser sailboats (ages 11+). Covers rigging, points of sail, tacking, jibing, and boat handling.',
   'tween-sail': 'Sailing for older campers (ages 11+) using larger boats. Focuses on crew work, navigation, and more advanced sailing techniques.',
   'race': 'Competitive sailing team for experienced sailors (ages 9+). Focuses on race strategy, starting, mark rounding, and fleet racing.',
-  'cruise': 'Evening sailing experience aboard a larger vessel for ages 11+. Explore the harbor and nearby waters with a crew.',
+  'golly': 'Introduction to sailing for ages 7–8 in Optimist sailboats. Covers basic sailing principles, rigging, and on-the-water sailing in the protected cove. 4 days/week.',
+  'cruise': 'Coastal sailing on 15\' and 18.5\' Precision sloops for ages 11+. Crew of up to 4 sails outside the cove along the Kennebunk coastline with an instructor aboard. Single-day sessions.',
   // Boating
   'pwrsq': 'Learn to drive and navigate powerboats (ages 11+). Covers boating safety, rules of the water, boat handling, and basic seamanship.',
   'fish': 'Rod and reel fishing from the dock or boat (ages 9+). Learn to cast, identify local species, and practice catch-and-release fishing.',
-  'picnic': 'Cruise by powerboat to a nearby island for a picnic lunch (ages 9+). Enjoy coastal scenery and a relaxed nautical outing.',
-  'ocean': 'Extended powerboat adventure exploring the local ocean and coastline (ages 9+). Spot wildlife, learn about the marine environment, and navigate open water.',
+  'picnic': '3-hour powerboat trip to Goat Island Lighthouse (ages 9+). Tour the lighthouse, explore the island, and enjoy a picnic lunch. Coastal cruise past Walkers Point. Wednesdays only.',
+  'ocean': 'Catch-and-release lobster trap excursion by powerboat (ages 9+). Haul and bait lobster traps, spot seals, porpoises, and seabirds along the coast. 2-hour sessions on M/Tu.',
+  'kayak-trip': '3-hour guided ocean kayak adventure for experienced paddlers (ages 9+). Paddle outside the cove to a destination beach for a snack break.',
   'kayak': 'Paddling on calm harbor water using sea kayaks (ages 7+). Covers basic paddle technique, safety, and navigation.',
   'sup': 'Stand-up paddleboarding on calm harbor water (ages 9+). Learn balance, paddle technique, and how to navigate on a paddleboard.',
   // CIT
   'cit-13': 'Counselor-in-Training program for 13-year-olds. Learn leadership, child development, and camp counselor responsibilities. Must enroll in at least two consecutive weeks to participate.',
+  'cit-14': 'Counselor-in-Training program for 14-year-olds (10-11 AM slot). Continues CIT training with more responsibilities. Must enroll in at least two consecutive weeks.',
   'cit-tennis': 'CIT specialization in tennis. Assist tennis counselors at Edgcomb and begin developing coaching and instructional skills.',
   'cit-pwrboat': 'CIT specialization in powerboating. Assist with Power Squadron and boating programs under direct staff supervision.',
   'cit-paddle': 'CIT specialization in paddling. Assist with kayaking and SUP programs and develop leadership skills on the water.',
   // Evening
   'movie-g': 'Monday evening G-rated movie screening at KBIA. A relaxed family-friendly event with popcorn. Ages 5–10.',
   'movie-pg': 'Wednesday evening PG-rated movie screening at KBIA. Popcorn and fun for slightly older campers. Ages 7–12.',
+  'tween-night': 'Tuesday evening social for ages 11–12. Pizza, beach games, music, bonfires, crafts, and more. Tweens help select activities.',
   'teen-night': 'Thursday evening social event for teen campers. Games, activities, and time to hang out with fellow teens. Ages 13–14.',
   'seadogs': 'Trip to a Portland Sea Dogs minor league baseball game. Transportation included. Week 6 only. Ages 11–14.',
 };
@@ -749,6 +769,14 @@ const SPECIAL_TIMES = {
   'seaflea-5a': { 0: {start:15,end:15.75}, 1: {start:15,end:15.75}, 2: {start:15,end:15.75}, 3: {start:16.5,end:18} },
   'seaflea-5b': { 0: {start:16,end:16.75}, 1: {start:16,end:16.75}, 2: {start:16,end:16.75}, 3: {start:8,end:9.5} },
   'cit-pwrboat-7': { 0: {start:13,end:15}, 1: {start:14,end:16} },
+  'golly-5': { 0: {start:15,end:15.75}, 1: {start:15,end:15.75}, 2: {start:15,end:15.75}, 3: {start:16.5,end:18} },
+  'golly-8': { 0: {start:9,end:9.75}, 1: {start:9,end:9.75}, 2: {start:9,end:9.75}, 3: {start:10,end:11.5} },
+  'ocean-6a': { 0: {start:9,end:13} }, // M 9-11 or 11-1 (block full range)
+  'ocean-6b': { 1: {start:9.5,end:13.5} }, // Tu 9:30-11:30 or 11:30-1:30
+  'ocean-7a': { 0: {start:13,end:17} }, // M 1-3 or 3-5
+  'ocean-7b': { 1: {start:14,end:18} }, // Tu 2-4 or 4-6
+  'ocean-8a': { 0: {start:8,end:12} }, // M 8-10 or 10-12
+  'ocean-8b': { 1: {start:8,end:12} }, // Tu 8-10 or 10-12
 };
 
 // ============================================================

@@ -260,7 +260,7 @@
   .import-cancel-btn:hover { background: #f7fafc; }
 </style>
 </head>
-<body>
+<body style="visibility:hidden;">
 
 <header>
   <div>
@@ -2227,7 +2227,8 @@ async function initApp() {
     }
     familyData = await res.json();
   } catch (err) {
-    document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#718096;">Failed to load. <a href="/login">Sign in</a></div>';
+    document.body.style.visibility = 'visible';
+    document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#718096;">Failed to load. <a href="/kbiacal/login">Sign in</a></div>';
     return;
   }
 
@@ -2281,7 +2282,8 @@ async function initApp() {
   // 8. Load schedule from server (or localStorage fallback)
   await loadState();
 
-  // 9. Render
+  // 9. Show page and render
+  document.body.style.visibility = 'visible';
   render();
 }
 

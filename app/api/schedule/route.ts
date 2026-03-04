@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkCsrf } from '@/lib/security'
+
+const MAX_SCHEDULE_SIZE = 500_000 // 500KB
+
+function validateScheduleData(data: unknown): data is Record<string, unknown> {
+  return data !== null && typeof data === 'object' && !Array.isArray(data)
+}
 
 // GET /api/schedule — returns the user's full schedule + waitlist
 export async function GET() {
@@ -10,24 +17,34 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data, error } = await supabase
-    .from('schedules')
-    .select('schedule, waitlist')
-    .eq('user_id', user.id)
-    .single()
+  try {
+    const { data, error } = await supabase
+      .from('schedules')
+      .select('schedule, waitlist')
+      .eq('user_id', user.id)
+      .single()
 
-  if (error && error.code !== 'PGRST116') {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error && error.code !== 'PGRST116') {
+      console.error('Schedule GET error:', error.message)
+      return NextResponse.json({ error: 'Failed to load schedule' }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      schedule: data?.schedule || {},
+      waitlist: data?.waitlist || {},
+    })
+  } catch (error) {
+    console.error('Schedule GET error:', error)
+    return NextResponse.json({ error: 'Failed to load schedule' }, { status: 500 })
   }
-
-  return NextResponse.json({
-    schedule: data?.schedule || {},
-    waitlist: data?.waitlist || {},
-  })
 }
 
 // PUT /api/schedule — upsert the user's full schedule + waitlist
 export async function PUT(request: NextRequest) {
+  if (!checkCsrf(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -35,29 +52,51 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await request.json()
-  const { schedule, waitlist } = body
+  try {
+    const rawBody = await request.text()
+    if (rawBody.length > MAX_SCHEDULE_SIZE) {
+      return NextResponse.json({ error: 'Schedule data too large' }, { status: 413 })
+    }
 
-  const { error } = await supabase
-    .from('schedules')
-    .upsert(
-      {
-        user_id: user.id,
-        schedule: schedule || {},
-        waitlist: waitlist || {},
-      },
-      { onConflict: 'user_id' }
-    )
+    const body = JSON.parse(rawBody)
+    const { schedule, waitlist } = body
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (schedule !== undefined && !validateScheduleData(schedule)) {
+      return NextResponse.json({ error: 'Invalid schedule format' }, { status: 400 })
+    }
+    if (waitlist !== undefined && !validateScheduleData(waitlist)) {
+      return NextResponse.json({ error: 'Invalid waitlist format' }, { status: 400 })
+    }
+
+    const { error } = await supabase
+      .from('schedules')
+      .upsert(
+        {
+          user_id: user.id,
+          schedule: schedule || {},
+          waitlist: waitlist || {},
+        },
+        { onConflict: 'user_id' }
+      )
+
+    if (error) {
+      console.error('Schedule PUT error:', error.message)
+      return NextResponse.json({ error: 'Failed to save schedule' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Schedule PUT error:', error)
+    return NextResponse.json({ error: 'Failed to save schedule' }, { status: 500 })
   }
-
-  return NextResponse.json({ success: true })
 }
 
 // DELETE /api/schedule — clear the user's schedule
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  if (!checkCsrf(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -65,14 +104,20 @@ export async function DELETE() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { error } = await supabase
-    .from('schedules')
-    .delete()
-    .eq('user_id', user.id)
+  try {
+    const { error } = await supabase
+      .from('schedules')
+      .delete()
+      .eq('user_id', user.id)
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('Schedule DELETE error:', error.message)
+      return NextResponse.json({ error: 'Failed to delete schedule' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Schedule DELETE error:', error)
+    return NextResponse.json({ error: 'Failed to delete schedule' }, { status: 500 })
   }
-
-  return NextResponse.json({ success: true })
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { checkRateLimit } from '@/lib/security'
+import { checkRateLimit, checkCsrf } from '@/lib/security'
 
 const ALLOWED_MODEL = 'claude-sonnet-4-6'
 const MAX_TOKENS = 16000
@@ -21,6 +21,10 @@ function validateMessages(messages: unknown): messages is Array<{ role: string; 
 }
 
 export async function POST(request: NextRequest) {
+  if (!checkCsrf(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 

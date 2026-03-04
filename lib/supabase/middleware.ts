@@ -36,7 +36,8 @@ export async function updateSession(request: NextRequest) {
   // Redirect unauthenticated users trying to access /kbiacal to /kbiacal/login
   if (
     !user &&
-    request.nextUrl.pathname.startsWith('/kbiacal')
+    request.nextUrl.pathname.startsWith('/kbiacal') &&
+    request.nextUrl.pathname !== '/kbiacal/login'
   ) {
     const url = request.nextUrl.clone()
     url.pathname = '/kbiacal/login'

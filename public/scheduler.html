@@ -1909,7 +1909,7 @@ The user's spreadsheet is their personal tracking sheet — names will NOT alway
 - "Creative Arts 4-5" / "Creative Arts" for ages 4-5 → artexplore-45
 - "Creative Arts" MWF for ages 5-6 → creart-56; ages 9-10 → creart-910; etc.
 - "Fishing" → fish-{week}
-- "Ocean Explorers" → ocean-{week} (only wks 6,8)
+- "Ocean Explorers" → Check database for ocean-{week}a (Mon slot) and ocean-{week}b (Tue slot). Available wks 5-8.
 - "Water Polo" → check database for all water polo classes and their times; expand if needed
 - "Swim Team" → swim-team
 - "Teen Night" → teen-night
@@ -1996,9 +1996,15 @@ function parseImportResponse(text) {
   if (!Array.isArray(parsed.imports)) parsed.imports = [];
   if (!Array.isArray(parsed.ambiguous)) parsed.ambiguous = [];
 
+  const validChildren = Object.keys(CHILDREN);
+
+  // Normalize week to number (AI may return string)
+  function normalizeWeek(w) { return typeof w === 'string' ? parseInt(w, 10) : w; }
+
   // Validate confident entries
+  parsed.imports = parsed.imports.map(imp => ({ ...imp, week: normalizeWeek(imp.week) }));
   parsed.imports = parsed.imports.filter(imp => {
-    if (!['caroline','max','jack'].includes(imp.child)) return false;
+    if (!validChildren.includes(imp.child)) return false;
     if (![5,6,7,8].includes(imp.week)) return false;
     if (!imp.classId || !CLASSES.find(c => c.id === imp.classId)) return false;
     if (!['confirmed','waitlisted'].includes(imp.status)) return false;
@@ -2009,8 +2015,9 @@ function parseImportResponse(text) {
   });
 
   // Validate ambiguous entries
+  parsed.ambiguous = parsed.ambiguous.map(amb => ({ ...amb, week: normalizeWeek(amb.week) }));
   parsed.ambiguous = parsed.ambiguous.filter(amb => {
-    if (!['caroline','max','jack'].includes(amb.child)) return false;
+    if (!validChildren.includes(amb.child)) return false;
     if (![5,6,7,8].includes(amb.week)) return false;
     if (!['confirmed','waitlisted'].includes(amb.status)) return false;
     if (!Array.isArray(amb.options) || amb.options.length < 2) return false;
@@ -2044,7 +2051,7 @@ function renderImportReview(parsed) {
   let html = '<div class="import-section"><h4>Review Import</h4>';
 
   let idx = 0;
-  for (const childKey of ['caroline','max','jack']) {
+  for (const childKey of Object.keys(CHILDREN)) {
     if (!grouped[childKey]) continue;
     const child = CHILDREN[childKey];
     html += `<div class="import-child-group">`;

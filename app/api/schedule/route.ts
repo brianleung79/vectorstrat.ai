@@ -8,6 +8,16 @@ function validateScheduleData(data: unknown): data is Record<string, unknown> {
   return data !== null && typeof data === 'object' && !Array.isArray(data)
 }
 
+// Helper: get the user's family_id from family_members
+async function getFamilyId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('family_members')
+    .select('family_id')
+    .eq('user_id', userId)
+    .single()
+  return data?.family_id || null
+}
+
 // GET /api/schedule — returns the user's full schedule + waitlist
 export async function GET() {
   const supabase = await createClient()
@@ -18,10 +28,16 @@ export async function GET() {
   }
 
   try {
+    const familyId = await getFamilyId(supabase, user.id)
+
+    if (!familyId) {
+      return NextResponse.json({ schedule: {}, waitlist: {} })
+    }
+
     const { data, error } = await supabase
       .from('schedules')
       .select('schedule, waitlist')
-      .eq('user_id', user.id)
+      .eq('family_id', familyId)
       .single()
 
     if (error && error.code !== 'PGRST116') {
@@ -68,15 +84,22 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid waitlist format' }, { status: 400 })
     }
 
+    const familyId = await getFamilyId(supabase, user.id)
+
+    if (!familyId) {
+      return NextResponse.json({ error: 'No family found. Set up your family first.' }, { status: 400 })
+    }
+
     const { error } = await supabase
       .from('schedules')
       .upsert(
         {
+          family_id: familyId,
           user_id: user.id,
           schedule: schedule || {},
           waitlist: waitlist || {},
         },
-        { onConflict: 'user_id' }
+        { onConflict: 'family_id' }
       )
 
     if (error) {
@@ -105,10 +128,16 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
+    const familyId = await getFamilyId(supabase, user.id)
+
+    if (!familyId) {
+      return NextResponse.json({ success: true })
+    }
+
     const { error } = await supabase
       .from('schedules')
       .delete()
-      .eq('user_id', user.id)
+      .eq('family_id', familyId)
 
     if (error) {
       console.error('Schedule DELETE error:', error.message)

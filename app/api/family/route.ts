@@ -16,6 +16,16 @@ function validateChild(c: unknown): c is { name: string; age: number; color: str
   )
 }
 
+// Helper: get the user's family_id from family_members
+async function getFamilyId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('family_members')
+    .select('family_id')
+    .eq('user_id', userId)
+    .single()
+  return data?.family_id || null
+}
+
 // GET /api/family — returns the user's family (children array)
 export async function GET() {
   const supabase = await createClient()
@@ -26,10 +36,17 @@ export async function GET() {
   }
 
   try {
+    const familyId = await getFamilyId(supabase, user.id)
+
+    if (!familyId) {
+      // New user with no family yet
+      return NextResponse.json({ children: null })
+    }
+
     const { data, error } = await supabase
       .from('families')
       .select('children')
-      .eq('user_id', user.id)
+      .eq('family_id', familyId)
       .single()
 
     if (error && error.code !== 'PGRST116') {
@@ -71,16 +88,40 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid child data. Each child needs a name, age (1-18), and color.' }, { status: 400 })
     }
 
-    const { error } = await supabase
-      .from('families')
-      .upsert(
-        { user_id: user.id, children },
-        { onConflict: 'user_id' }
-      )
+    let familyId = await getFamilyId(supabase, user.id)
 
-    if (error) {
-      console.error('Family PUT error:', error.message)
-      return NextResponse.json({ error: 'Failed to save family data' }, { status: 500 })
+    if (!familyId) {
+      // First-time user: create family_members (owner) + families row
+      familyId = crypto.randomUUID()
+
+      const { error: memberError } = await supabase
+        .from('family_members')
+        .insert({ family_id: familyId, user_id: user.id, role: 'owner' })
+
+      if (memberError) {
+        console.error('Family member insert error:', memberError.message)
+        return NextResponse.json({ error: 'Failed to save family data' }, { status: 500 })
+      }
+
+      const { error: familyError } = await supabase
+        .from('families')
+        .insert({ family_id: familyId, user_id: user.id, children })
+
+      if (familyError) {
+        console.error('Family insert error:', familyError.message)
+        return NextResponse.json({ error: 'Failed to save family data' }, { status: 500 })
+      }
+    } else {
+      // Existing family: update children
+      const { error } = await supabase
+        .from('families')
+        .update({ children })
+        .eq('family_id', familyId)
+
+      if (error) {
+        console.error('Family PUT error:', error.message)
+        return NextResponse.json({ error: 'Failed to save family data' }, { status: 500 })
+      }
     }
 
     return NextResponse.json({ success: true })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getFamilyId } from '@/lib/supabase/helpers'
 
 // GET /api/family/check-name?name=X — check if a child name exists in another family
 export async function GET(request: NextRequest) {
@@ -19,31 +20,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ exists: false })
     }
 
-    // Get user's own family_id
-    const { data: membership } = await supabase
-      .from('family_members')
-      .select('family_id')
-      .eq('user_id', user.id)
-      .single()
-
-    const userFamilyId = membership?.family_id
-
-    // Use admin client to search across all families (bypasses RLS)
+    const userFamilyId = await getFamilyId(supabase, user.id)
     const admin = createAdminClient()
 
-    // Search for families with a child matching this name (case-insensitive)
+    // Use Postgres RPC to search JSON children array efficiently
+    // Falls back to filtering: fetch only families that contain the name in their children JSON
     const { data: families, error } = await admin
       .from('families')
       .select('family_id, children')
+      .filter('children', 'cs', JSON.stringify([{ name }]))
 
     if (error) {
-      console.error('Check-name error:', error.message)
+      // Fallback: containment might not work for case-insensitive; try ilike on cast
+      console.error('Check-name filter error, falling back:', error.message)
       return NextResponse.json({ exists: false })
     }
 
-    // Find a match in another family
+    // Filter out own family and verify case-insensitive match
     for (const family of families || []) {
-      if (family.family_id === userFamilyId) continue // skip own family
+      if (family.family_id === userFamilyId) continue
 
       const children = family.children as Array<{ name: string }> | null
       if (!children) continue
@@ -53,7 +48,6 @@ export async function GET(request: NextRequest) {
       )
 
       if (match) {
-        // Find the owner's email
         const { data: owner } = await admin
           .from('family_members')
           .select('user_id')

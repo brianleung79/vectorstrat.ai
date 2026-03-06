@@ -1,4 +1,5 @@
 // Rate limiter: sliding window per user
+// Note: in-memory map resets on each serverless cold start; effective as basic abuse prevention
 const rateLimitMap = new Map<string, { count: number; windowStart: number }>()
 
 const RATE_LIMIT_WINDOW_MS = 60_000 // 1 minute

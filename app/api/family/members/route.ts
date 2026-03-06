@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getMembership } from '@/lib/supabase/helpers'
 import { checkCsrf } from '@/lib/security'
-
-// Helper: get the user's family_id and role from family_members
-async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
-  const { data } = await supabase
-    .from('family_members')
-    .select('family_id, role')
-    .eq('user_id', userId)
-    .single()
-  return data
-}
 
 // GET /api/family/members — list family members
 export async function GET() {
@@ -110,8 +101,11 @@ export async function DELETE(request: NextRequest) {
       .eq('user_id', targetUserId)
       .eq('family_id', membership.family_id)
 
-    // Create a fresh empty family for the removed/leaving user
+    // Create a fresh empty family for the removed/leaving user (families row + membership)
     const newFamilyId = crypto.randomUUID()
+    await admin
+      .from('families')
+      .insert({ family_id: newFamilyId, user_id: targetUserId, children: [] })
     await admin
       .from('family_members')
       .insert({ family_id: newFamilyId, user_id: targetUserId, role: 'owner' })

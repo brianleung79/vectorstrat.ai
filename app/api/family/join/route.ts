@@ -58,11 +58,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'You are already a member of this family' }, { status: 400 })
       }
 
-      // User has a different family — clean up their old solo data
-      // Delete their old family and schedule data, remove their membership
-      await admin.from('schedules').delete().eq('family_id', existingMembership.family_id)
-      await admin.from('families').delete().eq('family_id', existingMembership.family_id)
+      // Check if other members share the old family before deleting its data
+      const { count } = await admin
+        .from('family_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('family_id', existingMembership.family_id)
+
+      // Remove user's membership first
       await admin.from('family_members').delete().eq('user_id', user.id)
+
+      // Only delete family/schedule data if user was the sole member
+      if (count !== null && count <= 1) {
+        await admin.from('schedules').delete().eq('family_id', existingMembership.family_id)
+        await admin.from('families').delete().eq('family_id', existingMembership.family_id)
+      }
     }
 
     // Add user to the new family

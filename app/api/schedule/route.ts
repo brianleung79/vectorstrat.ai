@@ -1,21 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getFamilyId } from '@/lib/supabase/helpers'
 import { checkCsrf } from '@/lib/security'
 
 const MAX_SCHEDULE_SIZE = 500_000 // 500KB
 
 function validateScheduleData(data: unknown): data is Record<string, unknown> {
   return data !== null && typeof data === 'object' && !Array.isArray(data)
-}
-
-// Helper: get the user's family_id from family_members
-async function getFamilyId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('family_members')
-    .select('family_id')
-    .eq('user_id', userId)
-    .single()
-  return data?.family_id || null
 }
 
 // GET /api/schedule — returns the user's full schedule + waitlist

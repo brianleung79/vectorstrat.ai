@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getFamilyId } from '@/lib/supabase/helpers'
 import { checkCsrf } from '@/lib/security'
-
-// Helper: get the user's family_id from family_members
-async function getFamilyId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('family_members')
-    .select('family_id')
-    .eq('user_id', userId)
-    .single()
-  return data?.family_id || null
-}
 
 // POST /api/family/invite — create an invite link
 export async function POST(request: NextRequest) {

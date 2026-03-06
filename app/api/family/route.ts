@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getFamilyId } from '@/lib/supabase/helpers'
 import { checkCsrf } from '@/lib/security'
 
 const MAX_CHILDREN = 10
@@ -14,16 +16,6 @@ function validateChild(c: unknown): c is { name: string; age: number; color: str
     typeof obj.age === 'number' && Number.isInteger(obj.age) && obj.age >= 1 && obj.age <= 18 &&
     typeof obj.color === 'string' && obj.color.length > 0 && obj.color.length <= MAX_COLOR_LENGTH
   )
-}
-
-// Helper: get the user's family_id from family_members
-async function getFamilyId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('family_members')
-    .select('family_id')
-    .eq('user_id', userId)
-    .single()
-  return data?.family_id || null
 }
 
 // GET /api/family — returns the user's family (children array)
@@ -88,22 +80,15 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid child data. Each child needs a name, age (1-18), and color.' }, { status: 400 })
     }
 
+    // Use admin client for atomic multi-table operations
+    const admin = createAdminClient()
     let familyId = await getFamilyId(supabase, user.id)
 
     if (!familyId) {
-      // First-time user: create family_members (owner) + families row
+      // First-time user: create families row first, then family_members
       familyId = crypto.randomUUID()
 
-      const { error: memberError } = await supabase
-        .from('family_members')
-        .insert({ family_id: familyId, user_id: user.id, role: 'owner' })
-
-      if (memberError) {
-        console.error('Family member insert error:', memberError.message)
-        return NextResponse.json({ error: 'Failed to save family data' }, { status: 500 })
-      }
-
-      const { error: familyError } = await supabase
+      const { error: familyError } = await admin
         .from('families')
         .insert({ family_id: familyId, user_id: user.id, children })
 
@@ -111,12 +96,25 @@ export async function PUT(request: NextRequest) {
         console.error('Family insert error:', familyError.message)
         return NextResponse.json({ error: 'Failed to save family data' }, { status: 500 })
       }
+
+      const { error: memberError } = await admin
+        .from('family_members')
+        .insert({ family_id: familyId, user_id: user.id, role: 'owner' })
+
+      if (memberError) {
+        // Roll back the families row
+        await admin.from('families').delete().eq('family_id', familyId)
+        console.error('Family member insert error:', memberError.message)
+        return NextResponse.json({ error: 'Failed to save family data' }, { status: 500 })
+      }
     } else {
-      // Existing family: update children
-      const { error } = await supabase
+      // Existing family: upsert (handles case where membership exists but families row doesn't)
+      const { error } = await admin
         .from('families')
-        .update({ children })
-        .eq('family_id', familyId)
+        .upsert(
+          { family_id: familyId, user_id: user.id, children },
+          { onConflict: 'family_id' }
+        )
 
       if (error) {
         console.error('Family PUT error:', error.message)

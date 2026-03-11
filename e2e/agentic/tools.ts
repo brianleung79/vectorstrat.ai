@@ -125,7 +125,7 @@ export async function executeTool(
       try {
         await frame.locator(selector).first().click({ timeout: 5000 });
         await page.waitForTimeout(500);
-        const screenshot = await page.screenshot({ encoding: 'base64' });
+        const screenshot = (await page.screenshot()).toString('base64');
         return { result: `Clicked "${selector}" successfully.`, screenshot };
       } catch (e) {
         return { result: `Failed to click "${selector}": ${(e as Error).message}` };
@@ -145,7 +145,7 @@ export async function executeTool(
     }
 
     case 'screenshot': {
-      const screenshot = await page.screenshot({ encoding: 'base64' });
+      const screenshot = (await page.screenshot()).toString('base64');
       return { result: 'Screenshot captured.', screenshot };
     }
 
@@ -185,7 +185,7 @@ export async function executeTool(
       const path = input.path as string;
       await page.goto(path);
       await page.waitForLoadState('networkidle');
-      const screenshot = await page.screenshot({ encoding: 'base64' });
+      const screenshot = (await page.screenshot()).toString('base64');
       return { result: `Navigated to ${path}.`, screenshot };
     }
 

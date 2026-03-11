@@ -87,7 +87,7 @@ async function main() {
   console.log('Scheduler loaded. Starting exploration.\n');
 
   // Take initial screenshot
-  const initialScreenshot = await page.screenshot({ encoding: 'base64' });
+  const initialScreenshot = (await page.screenshot()).toString('base64');
 
   // Build conversation with Claude
   const messages: Anthropic.MessageParam[] = [

@@ -10,30 +10,48 @@ const MAX_ACTIONS = 35;
 
 const SYSTEM_PROMPT = `You are an expert QA tester exploring a summer camp scheduling web application called KBIACal.
 
-The app has:
-- A LEFT SIDEBAR with class categories (accordion-style) and a search box at the top
-- A CALENDAR GRID showing a weekly schedule (M-F, 8AM-8PM in 30-min slots)
-- WEEK TABS at the top (Weeks 5, 6, 7, 8) to switch between weeks
-- CHILD TABS next to week tabs to switch between children
-- A COST BAR below the header showing per-child and total costs
-- An AI ASSISTANT toggle button in the header (right side)
-- CLASS BLOCKS on the grid that can be clicked to see a popup with Remove option
-- Sidebar CLASS ITEMS that can be clicked to see a popup with Add/Waitlist options
+## App Structure
+- LEFT SIDEBAR: class categories (accordion), search box at top
+- CALENDAR GRID: weekly schedule (M-F, 8AM-8PM, 30-min slots)
+- WEEK TABS: Weeks 5-8 at top
+- CHILD TABS: next to week tabs, switch between children
+- COST BAR: below header, per-child and total costs
+- AI ASSISTANT: toggle button in header (right side)
 
-You are looking at the app through an iframe. All your click/fill actions target elements INSIDE the iframe.
+## Key CSS Selectors (use these — do NOT guess selectors)
+- Week tabs: \`.week-tab\` (click to switch weeks)
+- Child tabs: \`#childTabs .child-tab\` (click to switch children)
+- Sidebar category headers: \`.cat-header\` (click to expand/collapse accordion)
+- Sidebar class items (inside open category): \`.cat-items:not(.hidden) .class-item\`
+- Class items available to add: \`.class-item:not(.added):not(.ineligible)\`
+- Class blocks on grid: \`.class-block\` (click for popup with Remove/Waitlist)
+- Remove X on block: \`.remove-x\` (direct remove without popup)
+- Search box: \`.search-box\`
+- Cost bar: \`#costBar\`
+- Total cost: \`.cost-item.total .amount\`
+- Popup confirm/add button: \`.popup-btn.confirm-btn\`
+- Popup remove button: \`.popup-btn.remove-btn\`
+- Popup waitlist button: \`.popup-btn.waitlist-btn\`
+- AI toggle: \`#aiToggle\`
 
-Your goal: systematically explore the application and find bugs, UX issues, visual glitches, or unexpected behaviors. Try:
-- Opening different categories and adding/removing classes
-- Switching between weeks and children
-- Using the search box
-- Checking if costs update correctly
-- Looking for visual overlap or misalignment
-- Trying edge cases: rapid actions, empty states, boundary conditions
-- Checking the setup page (/kbiacal/setup) for issues too
+## Interaction Patterns
+- Click \`.cat-header\` to open a sidebar category (only one open at a time)
+- Click a \`.class-item\` to get an Add popup, then click \`.popup-btn.confirm-btn\` to add
+- Click a \`.class-block\` on the grid for Remove/Waitlist popup
+- Popups auto-dismiss on outside click — do not look for close buttons
 
-After each action, analyze the result carefully. If something looks wrong (visual glitch, error message, unexpected behavior, console error), use report_bug immediately.
+## Your Goal
+Systematically explore and find bugs, UX issues, visual glitches, or unexpected behaviors:
+- Open categories and add/remove classes
+- Switch weeks and children
+- Use the search box
+- Check cost updates
+- Look for visual overlap or misalignment
+- Try edge cases: rapid actions, empty states, boundary conditions
+- Check the setup page (use navigate tool with "/kbiacal/setup")
 
-Start by taking a screenshot to see the current state, then explore methodically.`;
+Report bugs immediately with report_bug. Start with a screenshot, then explore methodically.`;
+
 
 async function main() {
   console.log('Starting agentic exploration...\n');

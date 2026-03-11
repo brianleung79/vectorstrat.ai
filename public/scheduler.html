@@ -59,6 +59,7 @@
   .popup-btn.confirm-btn:hover { background: #f0fff4; }
   .popup-btn.waitlist-btn { color: #d69e2e; border-color: #fefcbf; }
   .popup-btn.waitlist-btn:hover { background: #fffff0; }
+  .popup-header { font-size: 12px; font-weight: 700; color: #2d3748; padding: 4px 8px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
   .popup-btn.remove-btn { color: #c53030; border-color: #fed7d7; }
   .popup-btn.remove-btn:hover { background: #fff5f5; }
   .popup-info { font-size: 11px; color: #4a5568; padding: 6px 8px 3px; border-top: 1px solid #edf2f7; margin-top: 1px; line-height: 1.5; }
@@ -1010,8 +1011,10 @@ function renderGrid() {
       const col = day + 2;
 
       const isConflict = conflicts.has(clsId);
+      // Shorter blocks get higher z-index so they stay clickable above longer overlapping blocks
+      const blockZ = Math.max(1, 20 - span);
       html += `<div class="class-block cat-${cls.category}${isConflict ? ' conflict' : ''}${isWait ? ' waitlisted' : ''}"
-        style="grid-row:${startRow}/span ${span};grid-column:${col};"
+        style="grid-row:${startRow}/span ${span};grid-column:${col};z-index:${blockZ};"
         onclick="showBlockPopup(event,'${clsId}','${status}')"
         title="${cls.name}${statusLabel}">
         <span class="remove-x" onclick="event.stopPropagation();${removeAction}">&#10005;</span>
@@ -1145,13 +1148,16 @@ function showSidebarPopup(event, clsId, status) {
 
 function showBlockPopup(event, clsId, status) {
   event.stopPropagation();
+  const cls = CLASSES.find(c => c.id === clsId);
+  const name = cls ? cls.name : clsId;
+  const header = `<div class="popup-header">${name}</div>`;
   const toggleBtn = status === 'confirmed'
     ? `<button class="popup-btn waitlist-btn" onclick="event.stopPropagation();moveToWaitlist('${clsId}')">Move to Waitlist</button>`
     : `<button class="popup-btn confirm-btn" onclick="event.stopPropagation();moveToConfirmed('${clsId}')">Move to Confirmed</button>`;
   const removeBtn = status === 'confirmed'
     ? `<button class="popup-btn remove-btn" onclick="event.stopPropagation();removeClass('${clsId}')">Remove</button>`
     : `<button class="popup-btn remove-btn" onclick="event.stopPropagation();removeFromWaitlist('${clsId}')">Remove</button>`;
-  _openPopup(event, `${toggleBtn}${removeBtn}`);
+  _openPopup(event, `${header}${toggleBtn}${removeBtn}`);
 }
 
 let _tooltip = null;

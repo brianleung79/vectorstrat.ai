@@ -2238,19 +2238,31 @@ function applyImport() {
     toReset.get(child).add(week);
   }
 
-  // Ask user: merge or replace?
-  const doMerge = confirm(
-    'Merge imported classes with existing schedule?\n\n' +
-    'OK = Merge (add to existing)\n' +
-    'Cancel = Replace (clear affected weeks first)'
-  );
+  // Check if any imported child already has classes in the affected weeks
+  let hasExisting = false;
+  for (const [child, weeks] of toReset) {
+    for (const week of weeks) {
+      if (schedule[child][week].length > 0 || waitlist[child][week].length > 0) {
+        hasExisting = true;
+        break;
+      }
+    }
+    if (hasExisting) break;
+  }
 
-  if (!doMerge) {
-    // Replace mode: only reset the specific child/week combos being imported
-    for (const [child, weeks] of toReset) {
-      for (const week of weeks) {
-        schedule[child][week] = [];
-        waitlist[child][week] = [];
+  // Only prompt merge/replace if the imported child already has classes
+  if (hasExisting) {
+    const doReplace = !confirm(
+      'Merge imported classes with existing schedule?\n\n' +
+      'OK = Merge (add to existing)\n' +
+      'Cancel = Replace (clear affected weeks first)'
+    );
+    if (doReplace) {
+      for (const [child, weeks] of toReset) {
+        for (const week of weeks) {
+          schedule[child][week] = [];
+          waitlist[child][week] = [];
+        }
       }
     }
   }

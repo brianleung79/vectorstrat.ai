@@ -2226,17 +2226,36 @@ function renderImportReview(parsed) {
 }
 
 function applyImport() {
-  // Reset all schedules before importing
-  for (const child of Object.keys(CHILDREN)) {
-    for (const week of [5,6,7,8]) {
-      schedule[child][week] = [];
-      waitlist[child][week] = [];
+  const checkboxes = document.querySelectorAll('.import-row input[type=checkbox]:checked');
+  if (checkboxes.length === 0) return;
+
+  // Collect which child/week combos are being imported
+  const toReset = new Map(); // child -> Set<week>
+  for (const cb of checkboxes) {
+    const child = cb.dataset.child;
+    const week = parseInt(cb.dataset.week);
+    if (!toReset.has(child)) toReset.set(child, new Set());
+    toReset.get(child).add(week);
+  }
+
+  // Ask user: merge or replace?
+  const doMerge = confirm(
+    'Merge imported classes with existing schedule?\n\n' +
+    'OK = Merge (add to existing)\n' +
+    'Cancel = Replace (clear affected weeks first)'
+  );
+
+  if (!doMerge) {
+    // Replace mode: only reset the specific child/week combos being imported
+    for (const [child, weeks] of toReset) {
+      for (const week of weeks) {
+        schedule[child][week] = [];
+        waitlist[child][week] = [];
+      }
     }
   }
 
-  const checkboxes = document.querySelectorAll('.import-row input[type=checkbox]:checked');
   let applied = 0;
-
   for (const cb of checkboxes) {
     const childKey = cb.dataset.child;
     const week = parseInt(cb.dataset.week);
@@ -2260,8 +2279,9 @@ function applyImport() {
   saveState();
   render();
 
+  const mode = doMerge ? 'merged' : 'replaced';
   document.getElementById('aiSuggestions').innerHTML = '';
-  addAiMessage('assistant', `Import complete! Applied ${applied} class${applied !== 1 ? 'es' : ''} across all children and weeks.`);
+  addAiMessage('assistant', `Import complete! ${mode === 'merged' ? 'Merged' : 'Applied'} ${applied} class${applied !== 1 ? 'es' : ''}.`);
 }
 
 // ============================================================

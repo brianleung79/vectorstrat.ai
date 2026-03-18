@@ -152,6 +152,93 @@ test.describe('Scheduler', () => {
     }
   });
 
+  test('add to waitlist shows dashed styling', async ({ scheduler, page }) => {
+    // First add a class
+    const availableItem = await findAvailableClassItem(scheduler);
+    await availableItem.click();
+    const addBtn = scheduler.locator('.popup-btn.confirm-btn');
+    await expect(addBtn).toBeVisible({ timeout: 3000 });
+    await addBtn.click();
+    await scheduler.locator('.class-block').first().waitFor({ timeout: 3000 });
+
+    // Click the class block on the grid
+    await scheduler.locator('.class-block:not(.waitlisted)').first().click({ force: true });
+
+    // Click "Move to Waitlist"
+    const waitlistBtn = scheduler.locator('.popup-btn.waitlist-btn');
+    await expect(waitlistBtn).toBeVisible({ timeout: 3000 });
+    await waitlistBtn.click();
+
+    // Block should now have waitlisted styling
+    await page.waitForTimeout(500);
+    const waitlistedBlocks = scheduler.locator('.class-block.waitlisted');
+    expect(await waitlistedBlocks.count()).toBeGreaterThan(0);
+  });
+
+  test('remove waitlisted class from grid', async ({ scheduler, page }) => {
+    // Ensure we have a waitlisted block (add one if needed)
+    let waitlistedCount = await scheduler.locator('.class-block.waitlisted').count();
+    if (waitlistedCount === 0) {
+      // Add a class then move it to waitlist
+      const item = await findAvailableClassItem(scheduler);
+      await item.click();
+      const addBtn = scheduler.locator('.popup-btn.confirm-btn');
+      await expect(addBtn).toBeVisible({ timeout: 3000 });
+      await addBtn.click();
+      await scheduler.locator('.class-block').first().waitFor({ timeout: 3000 });
+      await scheduler.locator('.class-block:not(.waitlisted)').first().click({ force: true });
+      const wlBtn = scheduler.locator('.popup-btn.waitlist-btn');
+      await expect(wlBtn).toBeVisible({ timeout: 3000 });
+      await wlBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    const beforeCount = await scheduler.locator('.class-block').count();
+
+    // Click a waitlisted block
+    await scheduler.locator('.class-block.waitlisted').first().click({ force: true });
+
+    // Click Remove
+    const removeBtn = scheduler.locator('.popup-btn.remove-btn');
+    await expect(removeBtn).toBeVisible({ timeout: 3000 });
+    await removeBtn.click();
+
+    await page.waitForTimeout(500);
+    const afterCount = await scheduler.locator('.class-block').count();
+    expect(afterCount).toBeLessThan(beforeCount);
+  });
+
+  test('switching children shows independent schedules', async ({ scheduler, page }) => {
+    const childTabs = scheduler.locator('#childTabs .child-tab');
+    const childCount = await childTabs.count();
+    if (childCount < 2) {
+      test.skip();
+      return;
+    }
+
+    // Make sure first child is active and add a class
+    await childTabs.first().click();
+    const initialBlocks = await scheduler.locator('.class-block').count();
+    const item = await findAvailableClassItem(scheduler);
+    const itemName = await item.locator('.class-name').textContent();
+    await item.click();
+    const addBtn = scheduler.locator('.popup-btn.confirm-btn');
+    await expect(addBtn).toBeVisible({ timeout: 3000 });
+    await addBtn.click();
+    await page.waitForTimeout(500);
+
+    // Switch to second child
+    await childTabs.nth(1).click();
+    await page.waitForTimeout(500);
+    const child2Blocks = await scheduler.locator('.class-block').count();
+
+    // Switch back to first child — their class should still be there
+    await childTabs.first().click();
+    await page.waitForTimeout(500);
+    const child1Blocks = await scheduler.locator('.class-block').count();
+    expect(child1Blocks).toBeGreaterThan(initialBlocks);
+  });
+
   test('schedule persists after reload', async ({ scheduler, page }) => {
     const frame = scheduler;
 

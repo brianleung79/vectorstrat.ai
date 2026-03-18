@@ -40,13 +40,16 @@ const SYSTEM_PROMPT = `You are an expert QA tester exploring a summer camp sched
 - Click a \`.class-block\` on the grid for Remove/Waitlist popup
 - Popups auto-dismiss on outside click — do not look for close buttons
 
+## Important: Overlapping classes are NOT bugs
+Users intentionally schedule overlapping/conflicting classes. The app detects these and outlines them in red with a conflict banner — this is working as designed. Do NOT report overlapping classes as bugs. Only report if conflict detection itself is broken (e.g., overlapping classes that should show red outlines but don't).
+
 ## Your Goal
 Systematically explore and find bugs, UX issues, visual glitches, or unexpected behaviors:
 - Open categories and add/remove classes
 - Switch weeks and children
 - Use the search box
 - Check cost updates
-- Look for visual overlap or misalignment
+- Look for broken interactions, missing UI elements, or incorrect behavior
 - Try edge cases: rapid actions, empty states, boundary conditions
 - Check the setup page (use navigate tool with "/kbiacal/setup")
 
@@ -129,13 +132,30 @@ async function main() {
   let done = false;
 
   while (actionCount < MAX_ACTIONS && !done) {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      tools: TOOL_DEFINITIONS,
-      messages,
-    });
+    let response;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          system: SYSTEM_PROMPT,
+          tools: TOOL_DEFINITIONS,
+          messages,
+        });
+        break;
+      } catch (e: unknown) {
+        const err = e as { status?: number; headers?: Record<string, string> };
+        if (err.status === 429 || err.status === 529 || err.status === 503) {
+          const retryAfter = parseInt(err.headers?.['retry-after'] || '60', 10);
+          const wait = err.status === 429 ? retryAfter : Math.min(retryAfter, 30);
+          console.log(`  [API ${err.status} — waiting ${wait}s before retry ${attempt + 1}/3]`);
+          await new Promise(r => setTimeout(r, wait * 1000));
+        } else {
+          throw e;
+        }
+      }
+    }
+    if (!response) throw new Error('Failed after 3 rate-limit retries');
 
     // Process response blocks
     const assistantContent = response.content;

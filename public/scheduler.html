@@ -319,7 +319,7 @@
     <button class="ai-quick-btn" onclick="askConflictHelp()">Fix Conflicts</button>
     <button class="ai-quick-btn" onclick="askFillSchedule()">Suggest Classes</button>
     <button class="ai-quick-btn" onclick="document.getElementById('importFile').click()" style="background:#f0fff4;border-color:#c6f6d5;">Import</button>
-    <input type="file" id="importFile" accept=".csv,.tsv,.txt" style="display:none;" onchange="handleImportFile(event)">
+    <input type="file" id="importFile" style="display:none;" onchange="handleImportFile(event)">
   </div>
   <div class="ai-messages" id="aiMessages">
     <div class="ai-msg assistant">Hi! I can help you build schedules. Try "Fix Conflicts" or "Suggest Classes", or ask me anything about scheduling.</div>
@@ -1822,16 +1822,57 @@ function handleImportFile(event) {
   if (!file) return;
   event.target.value = ''; // reset so same file can be re-selected
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const text = e.target.result;
-    if (!text.trim()) { addAiMessage('error', 'File is empty.'); return; }
-    parseImportWithAi(text);
-  };
-  reader.readAsText(file);
+  const ext = file.name.toLowerCase().split('.').pop();
+  const mime = file.type || '';
+
+  // Determine file type
+  const isPdf = ext === 'pdf' || mime === 'application/pdf';
+  const isImage = ['jpg','jpeg','png','gif','webp','bmp','tiff'].includes(ext) || mime.startsWith('image/');
+  const isText = ['csv','tsv','txt','md','json','xml','html','htm','log'].includes(ext) || mime.startsWith('text/');
+
+  if (isPdf) {
+    readAsBase64(file, (base64) => parseImportWithAi(null, { type: 'document', mediaType: 'application/pdf', data: base64 }));
+  } else if (isImage) {
+    const mediaType = mime || `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    readAsBase64(file, (base64) => parseImportWithAi(null, { type: 'image', mediaType, data: base64 }));
+  } else if (isText) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      if (!text.trim()) { addAiMessage('error', 'File is empty.'); return; }
+      parseImportWithAi(text, null);
+    };
+    reader.readAsText(file);
+  } else {
+    // Unknown binary — try reading as text first; if it looks like garbage, send as base64 document
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      const nullCount = (text.match(/\0/g) || []).length;
+      if (nullCount > text.length * 0.05) {
+        // Looks binary — re-read as base64
+        readAsBase64(file, (base64) => parseImportWithAi(null, { type: 'document', mediaType: mime || 'application/octet-stream', data: base64 }));
+      } else if (!text.trim()) {
+        addAiMessage('error', 'File is empty.'); return;
+      } else {
+        parseImportWithAi(text, null);
+      }
+    };
+    reader.readAsText(file);
+  }
 }
 
-async function parseImportWithAi(csvText) {
+function readAsBase64(file, callback) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = btoa(new Uint8Array(e.target.result).reduce((s, b) => s + String.fromCharCode(b), ''));
+    if (!base64) { addAiMessage('error', 'File is empty.'); return; }
+    callback(base64);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function parseImportWithAi(csvText, fileInfo) {
 
   // Make sure AI panel is open
   if (!aiPanelOpen) toggleAiPanel();
@@ -1850,7 +1891,7 @@ async function parseImportWithAi(csvText) {
   }).join('\n');
 
   const childKeys = Object.keys(CHILDREN);
-  const systemPrompt = `You are a smart data parser for a KBIA summer camp scheduling app. You receive raw file content (CSV, TSV, or freeform text) and your job is to figure out what classes are listed and match them to the app's class database. Be flexible — files come in many formats.
+  const systemPrompt = `You are a smart data parser for a KBIA summer camp scheduling app. You receive file content (CSV, TSV, text, PDF, image/screenshot, or other document) and your job is to figure out what classes are listed and match them to the app's class database. Be flexible — files come in many formats.
 
 ## CHILDREN
 ${Object.entries(CHILDREN).map(([k,v]) => `- ${k}: age ${v.age}`).join('\n')}
@@ -1867,9 +1908,11 @@ ${classRef}
 ## YOUR TASK
 Read the file content and do your best to understand what's in it. The file could be:
 - A structured CSV/TSV with headers
+- A PDF camp schedule from a registration system (like Daxko)
+- A screenshot or photo of a schedule
 - A registration confirmation email
 - A hand-typed list of classes
-- Any other format
+- A spreadsheet or any other format
 
 ### Step 1: Understand the format
 Figure out what columns or fields exist. Look for child names, class names, weeks, days, times, and any status indicators. Don't assume any particular column structure — adapt to what's there.
@@ -1937,6 +1980,22 @@ Rules:
 - Include originalName showing what the file said, for user review.`;
 
   try {
+    // Build message content based on file type
+    let userContent;
+    if (fileInfo && fileInfo.type === 'document') {
+      userContent = [
+        { type: 'document', source: { type: 'base64', media_type: fileInfo.mediaType, data: fileInfo.data } },
+        { type: 'text', text: 'Parse this camp schedule document and match the classes to the database.' }
+      ];
+    } else if (fileInfo && fileInfo.type === 'image') {
+      userContent = [
+        { type: 'image', source: { type: 'base64', media_type: fileInfo.mediaType, data: fileInfo.data } },
+        { type: 'text', text: 'Parse this camp schedule image and match the classes to the database.' }
+      ];
+    } else {
+      userContent = 'Parse this spreadsheet:\n\n' + csvText;
+    }
+
     const response = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1944,7 +2003,7 @@ Rules:
         model: 'claude-sonnet-4-6',
         max_tokens: 16000,
         system: systemPrompt,
-        messages: [{ role: 'user', content: 'Parse this spreadsheet:\n\n' + csvText }]
+        messages: [{ role: 'user', content: userContent }]
       })
     });
 

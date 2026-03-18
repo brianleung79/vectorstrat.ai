@@ -7,7 +7,7 @@ const MAX_TOKENS = 16000
 const MAX_SYSTEM_LENGTH = 50000
 const MAX_MESSAGES = 50
 
-function validateMessages(messages: unknown): messages is Array<{ role: string; content: string }> {
+function validateMessages(messages: unknown): messages is Array<{ role: string; content: unknown }> {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) return false
   return messages.every(
     (m) =>
@@ -15,9 +15,25 @@ function validateMessages(messages: unknown): messages is Array<{ role: string; 
       typeof m === 'object' &&
       typeof (m as Record<string, unknown>).role === 'string' &&
       ['user', 'assistant'].includes((m as Record<string, unknown>).role as string) &&
-      typeof (m as Record<string, unknown>).content === 'string' &&
-      ((m as Record<string, unknown>).content as string).length > 0
+      validateContent((m as Record<string, unknown>).content)
   )
+}
+
+function validateContent(content: unknown): boolean {
+  // String content (normal chat messages)
+  if (typeof content === 'string') return content.length > 0
+  // Array content (document/image blocks for PDF import)
+  if (Array.isArray(content)) {
+    return content.length > 0 && content.every((block) => {
+      if (!block || typeof block !== 'object') return false
+      const b = block as Record<string, unknown>
+      if (b.type === 'text') return typeof b.text === 'string'
+      if (b.type === 'document') return b.source && typeof b.source === 'object'
+      if (b.type === 'image') return b.source && typeof b.source === 'object'
+      return false
+    })
+  }
+  return false
 }
 
 export async function POST(request: NextRequest) {

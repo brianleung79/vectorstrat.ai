@@ -183,10 +183,16 @@ export async function executeTool(
 
     case 'navigate': {
       const path = input.path as string;
-      await page.goto(path);
-      await page.waitForLoadState('networkidle');
-      const screenshot = (await page.screenshot()).toString('base64');
-      return { result: `Navigated to ${path}.`, screenshot };
+      try {
+        // Support relative paths by resolving against the current origin
+        const url = path.startsWith('/') ? new URL(path, page.url()).href : path;
+        await page.goto(url);
+        await page.waitForLoadState('networkidle');
+        const screenshot = (await page.screenshot()).toString('base64');
+        return { result: `Navigated to ${path}.`, screenshot };
+      } catch (e) {
+        return { result: `Failed to navigate to "${path}": ${(e as Error).message}` };
+      }
     }
 
     case 'report_bug': {

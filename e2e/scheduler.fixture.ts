@@ -20,10 +20,15 @@ async function loginAndEnsureChildren(page: Page) {
     await page.locator('h1:has-text("Family Setup")').waitFor({ timeout: 10000 });
 
     const existingChildren = await page.locator('input[placeholder="Name"]').count();
-    if (existingChildren === 0) {
+    if (existingChildren < 2) {
+      if (existingChildren === 0) {
+        await page.click('text=+ Add child');
+        await page.locator('input[placeholder="Name"]').first().waitFor();
+        await page.locator('input[placeholder="Name"]').first().fill('TestChild');
+      }
       await page.click('text=+ Add child');
-      await page.locator('input[placeholder="Name"]').first().waitFor();
-      await page.locator('input[placeholder="Name"]').first().fill('TestChild');
+      const nameInputs = page.locator('input[placeholder="Name"]');
+      await nameInputs.last().fill('TestChild2');
     }
 
     await page.click('text=Save & Continue');

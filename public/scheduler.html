@@ -1769,7 +1769,7 @@ function renderSuggestions(parsed) {
     return;
   }
 
-  let html = '';
+  let html = '<div class="import-review">';
   for (let i = 0; i < parsed.actions.length; i++) {
     const action = parsed.actions[i];
     const cls = CLASSES.find(c => c.id === action.classId);
@@ -1778,61 +1778,60 @@ function renderSuggestions(parsed) {
     const days = cls.days.map(d => DAY_NAMES[d]).join('/');
     const time = cls.startTime >= 0 ? `${timeStr(cls.startTime)}-${timeStr(cls.endTime)}` : (cls.notes || 'Varies');
     const isRemove = action.type === 'remove' || action.type === 'unwaitlist';
-    const isWaitlist = action.type === 'waitlist';
-    const cardClass = isRemove ? 'suggestion-card remove-card' : 'suggestion-card';
-    const icon = isRemove ? 'Remove' : isWaitlist ? '⏳ Waitlist' : '+ Add';
-    const actionLabel = isRemove ? 'Click to remove' : isWaitlist ? 'Click to waitlist' : 'Click to add';
+    const typeLabel = isRemove ? 'remove' : action.type === 'waitlist' ? 'waitlist' : 'add';
+    const icon = isRemove ? '− Remove' : action.type === 'waitlist' ? '⏳ Waitlist' : '+ Add';
 
-    html += `<div class="${cardClass}" id="sg-${i}" onclick="applySuggestion('${action.type}','${action.classId}',${i})">
-      <div class="sg-name">${icon}: ${cls.name}</div>
-      <div class="sg-detail">Wk ${currentWeek} | ${days} ${time} | $${cls.fee} | ${CATEGORY_LABELS[cls.category] || cls.category}</div>
-      <div class="sg-detail">${action.reason || ''}</div>
-      <div class="sg-action">${actionLabel}</div>
+    html += `<div class="import-row">
+      <input type="checkbox" id="sg-${i}" checked
+        data-type="${action.type}" data-classid="${action.classId}">
+      <div class="ir-details">
+        <div class="ir-line1">
+          <span class="ir-name">${icon}: ${cls.name}</span>
+          <span class="ir-status ${typeLabel}">${typeLabel}</span>
+        </div>
+        <div class="ir-schedule">Wk ${currentWeek} | ${days} ${time} | $${cls.fee} | ${CATEGORY_LABELS[cls.category] || cls.category}</div>
+        ${action.reason ? `<div class="ir-schedule" style="color:#4a5568;font-style:italic;">${action.reason}</div>` : ''}
+      </div>
     </div>`;
   }
 
-  if (parsed.actions.length > 1) {
-    html += `<button class="apply-all-btn" onclick="applyAllSuggestions()">Apply All Suggestions</button>`;
-  }
+  html += `<div class="import-actions">
+    <button class="import-cancel-btn" onclick="document.getElementById('aiSuggestions').innerHTML='';">Cancel</button>
+    <button class="import-apply-btn" onclick="applySelectedSuggestions()">Apply Selected</button>
+  </div></div>`;
 
   container.innerHTML = html;
-  _pendingSuggestions = parsed.actions;
 }
 
-function applySuggestion(type, classId, index) {
-  if (type === 'add') addClass(classId);
-  else if (type === 'waitlist') addToWaitlist(classId);
-  else if (type === 'remove') removeClass(classId);
-  else if (type === 'unwaitlist') removeFromWaitlist(classId);
-  const card = document.getElementById('sg-' + index);
-  if (card) {
-    card.classList.add('applied');
-    card.querySelector('.sg-action').textContent = 'Applied';
-  }
-}
+function applySelectedSuggestions() {
+  const checkboxes = document.querySelectorAll('#aiSuggestions input[type=checkbox]:checked');
+  if (checkboxes.length === 0) return;
 
-function applyAllSuggestions() {
-  if (!_pendingSuggestions) return;
-  for (const action of _pendingSuggestions) {
-    const sched = schedule[currentChild][currentWeek];
-    const wait = waitlist[currentChild][currentWeek];
-    if (action.type === 'add') {
-      if (!sched.includes(action.classId) && !wait.includes(action.classId)) sched.push(action.classId);
-    } else if (action.type === 'waitlist') {
-      if (!sched.includes(action.classId) && !wait.includes(action.classId)) wait.push(action.classId);
-    } else if (action.type === 'remove') {
-      const idx = sched.indexOf(action.classId);
-      if (idx >= 0) sched.splice(idx, 1);
-    } else if (action.type === 'unwaitlist') {
-      const idx = wait.indexOf(action.classId);
-      if (idx >= 0) wait.splice(idx, 1);
+  const sched = schedule[currentChild][currentWeek];
+  const wait = waitlist[currentChild][currentWeek];
+
+  let applied = 0;
+  for (const cb of checkboxes) {
+    const type = cb.dataset.type;
+    const classId = cb.dataset.classid;
+
+    if (type === 'add') {
+      if (!sched.includes(classId) && !wait.includes(classId)) { sched.push(classId); applied++; }
+    } else if (type === 'waitlist') {
+      if (!sched.includes(classId) && !wait.includes(classId)) { wait.push(classId); applied++; }
+    } else if (type === 'remove') {
+      const idx = sched.indexOf(classId);
+      if (idx >= 0) { sched.splice(idx, 1); applied++; }
+    } else if (type === 'unwaitlist') {
+      const idx = wait.indexOf(classId);
+      if (idx >= 0) { wait.splice(idx, 1); applied++; }
     }
   }
+
   saveState();
   render();
-  document.querySelectorAll('.suggestion-card').forEach(c => c.classList.add('applied'));
-  document.querySelectorAll('.sg-action').forEach(a => a.textContent = 'Applied');
-  _pendingSuggestions = null;
+  document.getElementById('aiSuggestions').innerHTML = '';
+  addAiMessage('assistant', `Done! Applied ${applied} change${applied !== 1 ? 's' : ''}.`);
 }
 
 function askConflictHelp() {

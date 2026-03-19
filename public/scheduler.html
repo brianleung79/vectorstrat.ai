@@ -1845,7 +1845,16 @@ function askConflictHelp() {
 
 function askFillSchedule() {
   const child = CHILDREN[currentChild];
-  sendToAi(`Look at ${child.name}'s current Week ${currentWeek} schedule and figure out what they're into based on what's already there. Then suggest 3-6 additional classes that match their interests, fill time gaps, and make sense for a ${child.age}-year-old. Explain your reasoning — what patterns you see in their current classes and why each suggestion fits. Do NOT add anything automatically — just suggest, and I'll pick which ones to add.`);
+  const hasClasses = schedule[currentChild][currentWeek].length > 0 || waitlist[currentChild][currentWeek].length > 0;
+
+  if (hasClasses) {
+    sendToAi(`Look at ${child.name}'s current Week ${currentWeek} schedule and figure out what they're into based on what's already there. Then suggest 3-6 additional classes that match their interests, fill time gaps, and make sense for a ${child.age}-year-old. Explain your reasoning — what patterns you see in their current classes and why each suggestion fits. Do NOT add anything automatically — just suggest, and I'll pick which ones to add.`);
+  } else {
+    // No classes yet — ask about interests
+    const interests = prompt(`${child.name} has no classes in Week ${currentWeek} yet.\n\nWhat are ${child.name}'s interests? (e.g. swimming, art, outdoors, music)`);
+    if (!interests) return;
+    sendToAi(`${child.name} (age ${child.age}) has no classes yet for Week ${currentWeek}. Their parent says their interests are: "${interests}". Based on those interests, suggest 4-6 classes that would make a great week for them. Fill mornings and afternoons with a good mix. Explain why each suggestion fits their interests. Do NOT add anything automatically — just suggest, and I'll pick which ones to add.`);
+  }
 }
 
 function sendAiRequest() {
@@ -2092,8 +2101,37 @@ function parseImportResponse(text) {
   // Normalize week to number (AI may return string)
   function normalizeWeek(w) { return typeof w === 'string' ? parseInt(w, 10) : w; }
 
-  // Validate confident entries
+  // Normalize weeks first
   parsed.imports = parsed.imports.map(imp => ({ ...imp, week: normalizeWeek(imp.week) }));
+  parsed.ambiguous = parsed.ambiguous.map(amb => ({ ...amb, week: normalizeWeek(amb.week) }));
+
+  // Find unmatched child names and prompt user to reassign
+  const allEntryChildren = new Set([
+    ...parsed.imports.map(i => i.child),
+    ...parsed.ambiguous.map(a => a.child)
+  ].filter(c => c && !validChildren.includes(c)));
+
+  if (allEntryChildren.size > 0) {
+    const childOptions = validChildren.map(k => `"${CHILDREN[k].name}"`).join(', ');
+    for (const unknownChild of allEntryChildren) {
+      const choices = validChildren.map((k, i) => `${i + 1}. ${CHILDREN[k].name}`).join('\n');
+      const choice = prompt(
+        `Import found classes for "${unknownChild}" but that name doesn't match any child in your family.\n\n` +
+        `Assign these classes to:\n${choices}\n\n` +
+        `Enter the number, or cancel to skip these classes.`
+      );
+      if (choice) {
+        const idx = parseInt(choice, 10) - 1;
+        if (idx >= 0 && idx < validChildren.length) {
+          const targetChild = validChildren[idx];
+          parsed.imports.forEach(imp => { if (imp.child === unknownChild) imp.child = targetChild; });
+          parsed.ambiguous.forEach(amb => { if (amb.child === unknownChild) amb.child = targetChild; });
+        }
+      }
+    }
+  }
+
+  // Validate confident entries
   parsed.imports = parsed.imports.filter(imp => {
     if (!validChildren.includes(imp.child)) return false;
     if (![5,6,7,8].includes(imp.week)) return false;
@@ -2106,7 +2144,6 @@ function parseImportResponse(text) {
   });
 
   // Validate ambiguous entries
-  parsed.ambiguous = parsed.ambiguous.map(amb => ({ ...amb, week: normalizeWeek(amb.week) }));
   parsed.ambiguous = parsed.ambiguous.filter(amb => {
     if (!validChildren.includes(amb.child)) return false;
     if (![5,6,7,8].includes(amb.week)) return false;
@@ -2156,8 +2193,9 @@ function renderImportReview(parsed) {
       for (const imp of grouped[childKey][week]) {
         const cls = CLASSES.find(c => c.id === imp.classId);
         if (!cls) { idx++; continue; }
-        const checked = 'checked';
-        const matchNote = '';
+        const alreadyScheduled = schedule[childKey][week]?.includes(imp.classId) || waitlist[childKey][week]?.includes(imp.classId);
+        const checked = alreadyScheduled ? '' : 'checked';
+        const matchNote = alreadyScheduled ? '⚠ Already on schedule — unchecked to avoid duplicate' : '';
 
         // Build display name with age range if not already in name
         const DAY_SHORT_IMP = ['M','T','W','Th','F'];

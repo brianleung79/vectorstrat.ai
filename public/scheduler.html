@@ -1785,7 +1785,7 @@ function renderSuggestions(parsed) {
 
     html += `<div class="${cardClass}" id="sg-${i}" onclick="applySuggestion('${action.type}','${action.classId}',${i})">
       <div class="sg-name">${icon}: ${cls.name}</div>
-      <div class="sg-detail">${days} ${time} | $${cls.fee} | ${CATEGORY_LABELS[cls.category] || cls.category}</div>
+      <div class="sg-detail">Wk ${currentWeek} | ${days} ${time} | $${cls.fee} | ${CATEGORY_LABELS[cls.category] || cls.category}</div>
       <div class="sg-detail">${action.reason || ''}</div>
       <div class="sg-action">${actionLabel}</div>
     </div>`;

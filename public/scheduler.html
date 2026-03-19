@@ -884,12 +884,13 @@ function findAllConflicts(childKey, week) {
           conflicts.add(classes[i]);
           conflicts.add(classes[j]);
           const travelNote = buffer > 0 ? ` (5-min travel buffer between ${LOCATION_LABELS[locA] || locA} and ${LOCATION_LABELS[locB] || locB})` : '';
-          const reason = `Overlaps with "${b.name}" on ${DAY_FULL[day]} (${timeStr(aT.start)}-${timeStr(aT.end)} vs ${timeStr(bT.start)}-${timeStr(bT.end)})${travelNote}`;
-          const reasonB = `Overlaps with "${a.name}" on ${DAY_FULL[day]} (${timeStr(bT.start)}-${timeStr(bT.end)} vs ${timeStr(aT.start)}-${timeStr(aT.end)})${travelNote}`;
-          if (!reasons[classes[i]]) reasons[classes[i]] = [];
-          if (!reasons[classes[j]]) reasons[classes[j]] = [];
-          reasons[classes[i]].push(reason);
-          reasons[classes[j]].push(reasonB);
+          const reason = `Overlaps with "${b.name}" (${timeStr(aT.start)}-${timeStr(aT.end)} vs ${timeStr(bT.start)}-${timeStr(bT.end)})${travelNote}`;
+          const reasonB = `Overlaps with "${a.name}" (${timeStr(bT.start)}-${timeStr(bT.end)} vs ${timeStr(aT.start)}-${timeStr(aT.end)})${travelNote}`;
+          const keyA = `${classes[i]}:${day}`, keyB = `${classes[j]}:${day}`;
+          if (!reasons[keyA]) reasons[keyA] = [];
+          if (!reasons[keyB]) reasons[keyB] = [];
+          reasons[keyA].push(reason);
+          reasons[keyB].push(reasonB);
         }
       }
     }
@@ -1025,7 +1026,7 @@ function renderGrid() {
       // Shorter blocks get higher z-index so they stay clickable above longer overlapping blocks
       const blockZ = Math.max(1, 20 - span);
       const conflictHover = isConflict
-        ? `onmouseenter="showConflictTooltip(event,'${clsId}')" onmouseleave="hideConflictTooltip()"`
+        ? `onmouseenter="showConflictTooltip(event,'${clsId}',${day})" onmouseleave="hideConflictTooltip()"`
         : '';
       html += `<div class="class-block cat-${cls.category}${isConflict ? ' conflict' : ''}${isWait ? ' waitlisted' : ''}"
         style="grid-row:${startRow}/span ${span};grid-column:${col};z-index:${blockZ};"
@@ -1163,6 +1164,7 @@ function showSidebarPopup(event, clsId, status) {
 
 function showBlockPopup(event, clsId, status) {
   event.stopPropagation();
+  hideConflictTooltip();
   const cls = CLASSES.find(c => c.id === clsId);
   const name = cls ? cls.name : clsId;
   const header = `<div class="popup-header">${name}</div>`;
@@ -1203,16 +1205,16 @@ function hideClassTooltip() {
   if (_tooltip) { _tooltip.remove(); _tooltip = null; }
 }
 
-function showConflictTooltip(event, clsId) {
+function showConflictTooltip(event, clsId, day) {
   // Don't show if hovering over the info button
   if (event.target.classList.contains('info-btn')) return;
   hideConflictTooltip();
-  const reasons = _currentConflictReasons[clsId];
+  const reasons = _currentConflictReasons[`${clsId}:${day}`];
   if (!reasons || reasons.length === 0) return;
   const tooltip = document.createElement('div');
   tooltip.className = 'class-tooltip conflict-tooltip';
   const uniqueReasons = [...new Set(reasons)];
-  tooltip.innerHTML = `<strong style="color:#e53e3e;">⚠ Conflict</strong>` +
+  tooltip.innerHTML = `<strong style="color:#e53e3e;">⚠ ${DAY_FULL[day]} Conflict</strong>` +
     uniqueReasons.map(r => `<div style="margin-top:4px;font-size:11px;">${r}</div>`).join('');
   tooltip.style.left = (event.clientX + 10) + 'px';
   tooltip.style.top = (event.clientY + 12) + 'px';

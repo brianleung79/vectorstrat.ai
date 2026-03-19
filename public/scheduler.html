@@ -1846,7 +1846,7 @@ function askConflictHelp() {
 
 function askFillSchedule() {
   const child = CHILDREN[currentChild];
-  sendToAi(`Build out ${child.name}'s Week ${currentWeek} schedule. Look at what's missing and fill the gaps — I want a solid, full day. Pick the best classes for a ${child.age}-year-old and just add them. Go for 4-6 activities if the schedule is light.`);
+  sendToAi(`Look at ${child.name}'s current Week ${currentWeek} schedule and figure out what they're into based on what's already there. Then suggest 3-6 additional classes that match their interests, fill time gaps, and make sense for a ${child.age}-year-old. Explain your reasoning — what patterns you see in their current classes and why each suggestion fits. Do NOT add anything automatically — just suggest, and I'll pick which ones to add.`);
 }
 
 function sendAiRequest() {

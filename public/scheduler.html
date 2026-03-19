@@ -827,6 +827,7 @@ function getClassLocation(cls) {
 }
 
 const TRAVEL_BUFFER = 5 / 60; // 5 minutes in decimal hours
+const LOCATION_LABELS = { kbia: 'KBIA', edgcomb: 'Edgcomb Tennis', goochs: "Gooch's Beach" };
 
 function isEligible(cls, childKey) {
   const age = CHILDREN[childKey].age;
@@ -866,12 +867,14 @@ function hasConflict(childKey, week, newClassId) {
 function findAllConflicts(childKey, week) {
   const classes = getAllScheduledIds(childKey, week);
   const conflicts = new Set();
+  const reasons = {}; // classId -> [reason strings]
   for (let i = 0; i < classes.length; i++) {
     for (let j = i + 1; j < classes.length; j++) {
       const a = CLASSES.find(c => c.id === classes[i]);
       const b = CLASSES.find(c => c.id === classes[j]);
       if (!a || !b) continue;
-      const buffer = (getClassLocation(a) !== getClassLocation(b)) ? TRAVEL_BUFFER : 0;
+      const locA = getClassLocation(a), locB = getClassLocation(b);
+      const buffer = (locA !== locB) ? TRAVEL_BUFFER : 0;
       for (const day of a.days) {
         if (!b.days.includes(day)) continue;
         const aT = getClassTimes(a, day);
@@ -880,11 +883,18 @@ function findAllConflicts(childKey, week) {
         if (aT.start < bT.end + buffer && bT.start < aT.end + buffer) {
           conflicts.add(classes[i]);
           conflicts.add(classes[j]);
+          const travelNote = buffer > 0 ? ` (5-min travel buffer between ${LOCATION_LABELS[locA] || locA} and ${LOCATION_LABELS[locB] || locB})` : '';
+          const reason = `Overlaps with "${b.name}" on ${DAY_FULL[day]} (${timeStr(aT.start)}-${timeStr(aT.end)} vs ${timeStr(bT.start)}-${timeStr(bT.end)})${travelNote}`;
+          const reasonB = `Overlaps with "${a.name}" on ${DAY_FULL[day]} (${timeStr(bT.start)}-${timeStr(bT.end)} vs ${timeStr(aT.start)}-${timeStr(aT.end)})${travelNote}`;
+          if (!reasons[classes[i]]) reasons[classes[i]] = [];
+          if (!reasons[classes[j]]) reasons[classes[j]] = [];
+          reasons[classes[i]].push(reason);
+          reasons[classes[j]].push(reasonB);
         }
       }
     }
   }
-  return conflicts;
+  return { conflicts, reasons };
 }
 
 function updateCosts() {
@@ -955,7 +965,8 @@ function renderSidebar() {
 
 function renderGrid() {
   const area = document.getElementById('gridArea');
-  const conflicts = findAllConflicts(currentChild, currentWeek);
+  const { conflicts, reasons: conflictReasons } = findAllConflicts(currentChild, currentWeek);
+  _currentConflictReasons = conflictReasons;
   const START_HOUR = 8;
   const END_HOUR = 20;
   const HALF_HOURS = (END_HOUR - START_HOUR) * 2; // 24 half-hour rows
@@ -1013,12 +1024,16 @@ function renderGrid() {
       const isConflict = conflicts.has(clsId);
       // Shorter blocks get higher z-index so they stay clickable above longer overlapping blocks
       const blockZ = Math.max(1, 20 - span);
+      const conflictHover = isConflict
+        ? `onmouseenter="showConflictTooltip(event,'${clsId}')" onmouseleave="hideConflictTooltip()"`
+        : '';
       html += `<div class="class-block cat-${cls.category}${isConflict ? ' conflict' : ''}${isWait ? ' waitlisted' : ''}"
         style="grid-row:${startRow}/span ${span};grid-column:${col};z-index:${blockZ};"
         onclick="showBlockPopup(event,'${clsId}','${status}')"
+        ${conflictHover}
         title="${cls.name}${statusLabel}">
         <span class="remove-x" onclick="event.stopPropagation();${removeAction}">&#10005;</span>
-        <span class="info-btn" onmouseenter="showClassTooltip(event,'${clsId}')" onmouseleave="hideClassTooltip()">i</span>
+        <span class="info-btn" onmouseenter="event.stopPropagation();showClassTooltip(event,'${clsId}')" onmouseleave="hideClassTooltip()">i</span>
         <span class="block-name">${cls.name}</span>
         <span class="block-time">${timeStr(times.start)}-${timeStr(times.end)}</span>
       </div>`;
@@ -1052,7 +1067,7 @@ function renderAllKids() {
         return aS - bS;
       });
 
-      const conflicts = findAllConflicts(childKey, currentWeek);
+      const { conflicts } = findAllConflicts(childKey, currentWeek);
 
       for (const {cls, status} of sorted) {
         const isConflict = conflicts.has(cls.id);
@@ -1161,6 +1176,8 @@ function showBlockPopup(event, clsId, status) {
 }
 
 let _tooltip = null;
+let _conflictTooltip = null;
+let _currentConflictReasons = {};
 
 function showClassTooltip(event, clsId) {
   hideClassTooltip();
@@ -1184,6 +1201,30 @@ function showClassTooltip(event, clsId) {
 
 function hideClassTooltip() {
   if (_tooltip) { _tooltip.remove(); _tooltip = null; }
+}
+
+function showConflictTooltip(event, clsId) {
+  // Don't show if hovering over the info button
+  if (event.target.classList.contains('info-btn')) return;
+  hideConflictTooltip();
+  const reasons = _currentConflictReasons[clsId];
+  if (!reasons || reasons.length === 0) return;
+  const tooltip = document.createElement('div');
+  tooltip.className = 'class-tooltip conflict-tooltip';
+  const uniqueReasons = [...new Set(reasons)];
+  tooltip.innerHTML = `<strong style="color:#e53e3e;">⚠ Conflict</strong>` +
+    uniqueReasons.map(r => `<div style="margin-top:4px;font-size:11px;">${r}</div>`).join('');
+  tooltip.style.left = (event.clientX + 10) + 'px';
+  tooltip.style.top = (event.clientY + 12) + 'px';
+  document.body.appendChild(tooltip);
+  const rect = tooltip.getBoundingClientRect();
+  if (rect.right > window.innerWidth) tooltip.style.left = (window.innerWidth - rect.width - 8) + 'px';
+  if (rect.bottom > window.innerHeight) tooltip.style.top = (event.clientY - rect.height - 4) + 'px';
+  _conflictTooltip = tooltip;
+}
+
+function hideConflictTooltip() {
+  if (_conflictTooltip) { _conflictTooltip.remove(); _conflictTooltip = null; }
 }
 
 function moveToWaitlist(clsId) {
@@ -1481,7 +1522,7 @@ function buildSystemPrompt() {
   const weekClasses = schedule[currentChild][week];
   const waitClasses = waitlist[currentChild][week];
   const allIds = [...weekClasses, ...waitClasses];
-  const conflicts = findAllConflicts(currentChild, week);
+  const { conflicts } = findAllConflicts(currentChild, week);
   const weekDates = {5:'Jul 20-24', 6:'Jul 27-31', 7:'Aug 3-7', 8:'Aug 10-14'};
 
   // Current confirmed schedule
@@ -1793,7 +1834,7 @@ function applyAllSuggestions() {
 }
 
 function askConflictHelp() {
-  const conflicts = findAllConflicts(currentChild, currentWeek);
+  const { conflicts } = findAllConflicts(currentChild, currentWeek);
   if (conflicts.size === 0) {
     addAiMessage('assistant', `No conflicts in ${CHILDREN[currentChild].name}'s Week ${currentWeek} schedule!`);
     return;
